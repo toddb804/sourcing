@@ -1,0 +1,1247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0E0E10">
+<title>Sourcing</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<meta name="apple-mobile-web-app-title" content="Sourcing">
+<style>
+:root{
+  --bg:#0E0E10; --card:#17171A; --card2:#1E1E22; --line:#2A2A30; --text:#F2F2F3; --muted:#A0A0A8; --faint:#6E6E78;
+  --orange:#CC5500; --orange-hi:#E2670F; --orange-soft:rgba(204,85,0,.16);
+  --good:#4CC38A; --good-soft:rgba(76,195,138,.15); --bad:#F2555A; --bad-soft:rgba(242,85,90,.14);
+  --gray-bar:#5C5C66;
+  --r:16px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;
+  font-size:16px;line-height:1.35;-webkit-text-size-adjust:100%}
+body{padding:calc(env(safe-area-inset-top) + 12px) 16px calc(env(safe-area-inset-bottom) + 32px)}
+.num{font-variant-numeric:tabular-nums}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+.wrap{max-width:520px;margin:0 auto}
+
+/* header */
+.top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.brand{font-weight:700;font-size:17px;letter-spacing:.2px}
+.brand{font-size:24px;font-weight:800;line-height:1.05}
+.brand small{display:block;font-size:11px;letter-spacing:1.2px;color:var(--orange-hi);font-weight:800;margin-bottom:2px}
+.top-r{display:flex;align-items:center;gap:6px}
+.status{font-size:12px;color:var(--muted)}
+.status.warn{color:#F5B14C}
+.icon-btn{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:var(--card);color:var(--muted)}
+.testbar{background:#3A2A00;color:#FFD27A;border-radius:10px;padding:8px 12px;font-size:13px;margin-bottom:12px;font-weight:600}
+
+/* goal card */
+.goal{background:var(--card);border-radius:var(--r);padding:18px 18px 16px;border:1px solid var(--line)}
+.goal.met{background:linear-gradient(180deg,rgba(76,195,138,.22),rgba(76,195,138,.10));border-color:rgba(76,195,138,.55)}
+.goal .lbl{font-size:13px;color:var(--muted);font-weight:600;display:flex;justify-content:space-between}
+.goal.met .lbl{color:#BDEBD3}
+.goal .big{font-size:52px;font-weight:800;letter-spacing:-1.5px;line-height:1.05;margin:6px 0 10px}
+.goal .big small{font-size:26px;color:var(--muted);font-weight:700;letter-spacing:-.5px}
+.goal.met .big small{color:#BDEBD3}
+.metbadge{display:inline-block;background:var(--good);color:#06240F;font-weight:800;font-size:13px;letter-spacing:.6px;padding:4px 10px;border-radius:99px;margin-left:8px;vertical-align:middle}
+.bar{height:10px;background:var(--card2);border-radius:99px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--orange);border-radius:99px;transition:width .4s}
+.goal.met .bar i{background:var(--good)}
+.goal .sub{display:flex;justify-content:space-between;margin-top:10px;font-size:15px;color:var(--muted)}
+.goal .sub b{color:var(--text)}
+.lastweek{font-size:14px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line);color:var(--muted)}
+.lastweek .bad{color:var(--bad);font-weight:700}
+.lastweek .good{color:var(--good);font-weight:700}
+
+/* main action */
+.actions{display:flex;gap:10px;margin:14px 0 22px}
+.logbtn{flex:1;background:var(--orange);color:#fff;font-weight:800;font-size:20px;border-radius:var(--r);padding:18px 16px;
+  display:flex;align-items:center;justify-content:center;gap:10px;box-shadow:0 6px 20px rgba(204,85,0,.28)}
+.logbtn:active{background:var(--orange-hi)}
+.pendbtn{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:0 14px;min-width:86px;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;font-size:12px;color:var(--muted)}
+.pendbtn b{font-size:22px;color:var(--text);line-height:1}
+.pendbtn.has{border-color:var(--orange);background:var(--orange-soft)}
+.pendbtn.has b{color:var(--orange-hi)}
+
+/* sections */
+h2{font-size:13px;text-transform:uppercase;letter-spacing:.9px;color:var(--muted);margin:26px 2px 10px;font-weight:700}
+.seg{display:flex;background:var(--card);border-radius:12px;padding:3px;gap:2px;margin-bottom:10px;border:1px solid var(--line)}
+.seg button{flex:1;padding:8px 0;border-radius:9px;font-size:14px;font-weight:600;color:var(--muted)}
+.seg button.on{background:var(--card2);color:var(--text);box-shadow:inset 0 0 0 1px var(--line)}
+.kpis{display:grid;grid-template-columns:1fr;gap:8px}
+.kpi{background:var(--card);border-radius:14px;padding:12px 14px;border:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}
+.kpi .name{font-size:13px;color:var(--muted);font-weight:600}
+.kpi .val{font-size:28px;font-weight:800;letter-spacing:-.5px;margin-top:2px}
+.kpi .cmp{text-align:right;font-size:13px;color:var(--muted)}
+.chg{display:inline-block;font-weight:800;font-size:15px;padding:3px 8px;border-radius:8px;margin-bottom:3px}
+.chg.good{color:var(--good);background:var(--good-soft)}
+.chg.bad{color:var(--bad);background:var(--bad-soft)}
+.chg.neutral{color:var(--muted);background:var(--card2)}
+.na{font-weight:700;color:var(--faint)}
+.foot{font-size:12px;color:var(--faint);margin:8px 2px 0}
+
+/* source table */
+.tbl{background:var(--card);border-radius:14px;border:1px solid var(--line);overflow:hidden}
+.tr{display:grid;grid-template-columns:1.35fr .8fr 1fr .95fr;gap:6px;padding:10px 12px;border-top:1px solid var(--line);align-items:start}
+.tr:first-child{border-top:0}
+.th{font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.6px;font-weight:700;padding-top:9px;padding-bottom:7px}
+.tr .r{text-align:right}
+.src{font-weight:700;font-size:15px}
+.share{height:4px;background:var(--card2);border-radius:4px;margin-top:6px;overflow:hidden}
+.share i{display:block;height:100%;background:var(--muted);border-radius:4px}
+.sharep{font-size:11px;color:var(--faint);margin-top:3px}
+.cell b{display:block;font-size:15px}
+.cell .p{font-size:11px;color:var(--faint);margin-top:2px;white-space:nowrap}
+.arr{font-size:11px;font-weight:800}
+.arr.good{color:var(--good)} .arr.bad{color:var(--bad)} .arr.neutral{color:var(--muted)}
+.tr.total{background:var(--card2)}
+.tr.zero .src,.tr.zero .cell b{color:var(--faint)}
+
+/* chart */
+.chartcard{background:var(--card);border-radius:14px;border:1px solid var(--line);padding:12px 8px 10px}
+.charttitle{font-size:15px;font-weight:700;padding:0 8px}
+.chartsub{font-size:12px;color:var(--muted);padding:2px 8px 6px}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--muted);padding:4px 8px 0}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.sw{width:10px;height:10px;border-radius:3px;display:inline-block}
+.sw.line{height:2px;width:14px;border-radius:0;background:var(--text)}
+.detail{margin:8px 8px 0;padding:10px 12px;background:var(--card2);border-radius:10px;font-size:14px;display:none}
+.detail.on{display:block}
+svg text{font-family:-apple-system,BlinkMacSystemFont,sans-serif}
+
+/* recent */
+.list{background:var(--card);border-radius:14px;border:1px solid var(--line);overflow:hidden}
+.li{display:flex;justify-content:space-between;align-items:center;padding:11px 14px;border-top:1px solid var(--line)}
+.li:first-child{border-top:0}
+.li .a{font-weight:700}
+.li .s{font-size:12px;color:var(--muted);margin-top:1px}
+.li .rt{text-align:right}
+.li .rt b{display:block}
+.sync{color:#F5B14C;font-weight:700}
+.empty{padding:16px;color:var(--muted);font-size:14px;text-align:center}
+
+/* overlay sheets */
+.sheet{position:fixed;inset:0;background:var(--bg);z-index:20;overflow-y:auto;display:none;
+  padding:calc(env(safe-area-inset-top) + 12px) 16px calc(env(safe-area-inset-bottom) + 24px)}
+.sheet.on{display:block}
+#entry{z-index:25}
+.sheet .hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.sheet .hd h3{margin:0;font-size:22px}
+.x{font-size:16px;color:var(--orange-hi);font-weight:700;padding:8px 4px}
+.say{width:100%;min-height:76px;background:var(--card);border:1.5px dashed #4A4A52;border-radius:14px;color:var(--text);
+  padding:12px 14px;font:inherit;font-size:17px;resize:none}
+.say:focus{outline:none;border-color:var(--orange);border-style:solid}
+.sayhint{font-size:13px;color:var(--muted);margin:6px 2px 0}
+.heard{font-size:13px;color:var(--muted);margin:6px 2px 0;min-height:18px}
+.heard b{color:var(--text)}
+.field{margin-top:18px}
+.flabel{font-size:13px;color:var(--muted);font-weight:700;margin:0 2px 7px;display:flex;justify-content:space-between;align-items:center}
+.tag{font-size:11px;font-weight:800;letter-spacing:.5px;padding:2px 7px;border-radius:6px}
+.tag.check{background:var(--orange-soft);color:var(--orange-hi)}
+.tag.need{background:var(--bad-soft);color:var(--bad)}
+.srcgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.srcgrid button{background:var(--card);border:1.5px solid var(--line);border-radius:12px;padding:15px 4px;font-weight:700;font-size:15px}
+.srcgrid button.on{background:var(--orange);border-color:var(--orange);color:#fff}
+.srcgrid.check button.on{box-shadow:0 0 0 3px rgba(226,103,15,.45)}
+.srcgrid.need button{border-color:rgba(242,85,90,.6)}
+.inp{display:flex;align-items:center;background:var(--card);border:1.5px solid var(--line);border-radius:12px;padding:0 14px}
+.inp span{font-size:24px;color:var(--muted);font-weight:700;margin-right:6px}
+.inp input{flex:1;background:none;border:0;color:var(--text);font:inherit;font-size:28px;font-weight:800;padding:12px 0;width:100%;min-width:0}
+.inp input:focus{outline:none}
+.inp:focus-within{border-color:var(--orange)}
+.inp.check{border-color:var(--orange-hi);box-shadow:0 0 0 3px rgba(226,103,15,.25)}
+.inp.need{border-color:var(--bad);box-shadow:0 0 0 3px rgba(242,85,90,.2)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.buyer{display:flex;gap:8px}
+.buyer button{flex:1;background:var(--card);border:1.5px solid var(--line);border-radius:12px;padding:13px 4px;font-weight:700}
+.buyer button.on{border-color:var(--text);background:var(--card2)}
+.avg{margin-top:16px;background:var(--card);border-radius:12px;padding:12px 14px;display:flex;justify-content:space-between;font-size:15px;color:var(--muted)}
+.avg b{color:var(--text);font-size:18px}
+.btns{display:grid;gap:10px;margin-top:20px}
+.b1{background:var(--orange);color:#fff;font-weight:800;font-size:19px;border-radius:14px;padding:17px}
+.b2{background:var(--card);border:1.5px solid var(--line);font-weight:700;font-size:16px;border-radius:14px;padding:14px}
+.b3{color:var(--bad);font-weight:700;padding:12px}
+.b1:disabled,.b2:disabled{opacity:.35}
+.toast{position:fixed;left:16px;right:16px;bottom:calc(env(safe-area-inset-bottom) + 18px);background:#203A2C;color:#D9F6E6;border:1px solid rgba(76,195,138,.5);
+  border-radius:14px;padding:14px 16px;font-weight:600;z-index:40;transform:translateY(140%);transition:transform .25s;max-width:520px;margin:0 auto}
+.toast.on{transform:none}
+.toast.err{background:#3A1E20;color:#FFD9DA;border-color:rgba(242,85,90,.5)}
+.toast.warn{background:#3A2F17;color:#FFE7B8;border-color:rgba(245,177,76,.5)}
+.plist .li{cursor:pointer}
+.setrow{background:var(--card);border-radius:14px;border:1px solid var(--line);padding:14px;margin-bottom:12px}
+.setrow p{margin:6px 0 0;font-size:13px;color:var(--muted)}
+.goalin{display:flex;gap:10px;margin-top:10px}
+.goalin .inp{flex:1}
+.goalin .b1{padding:0 18px;font-size:16px}
+/* tabs + by date */
+.tabs{display:flex;gap:4px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:3px;margin-bottom:12px}
+.tabs button{flex:1;padding:10px 0;border-radius:9px;font-weight:700;font-size:15px;color:var(--muted)}
+.tabs button.on{background:var(--orange);color:#fff}
+.chips{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px}
+.chips button{background:var(--card);border:1.5px solid var(--line);border-radius:10px;padding:10px 2px;font-weight:700;font-size:13px;color:var(--muted)}
+.chips button.on{border-color:var(--orange);color:var(--text);background:var(--orange-soft)}
+.dates{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.dates label{display:block;font-size:12px;color:var(--muted);font-weight:700;margin:0 2px 5px}
+.dates input{width:100%;background:var(--card);border:1.5px solid var(--line);border-radius:12px;color:var(--text);font:inherit;font-size:16px;
+  padding:11px 10px;color-scheme:dark;min-height:46px}
+.dtlabel{font-size:13px;color:var(--muted);margin:2px 2px 10px;font-weight:600}
+.dtcard{background:var(--card);border-radius:14px;padding:14px 16px;border:1px solid var(--line);margin-bottom:8px}
+.dtcard .name{font-size:13px;color:var(--muted);font-weight:600}
+.dtcard .val{font-size:34px;font-weight:800;letter-spacing:-.5px;margin-top:2px}
+.setup{max-width:520px;margin:0 auto}
+.setup p{color:var(--muted);font-size:15px}
+.setup textarea{width:100%;min-height:90px;background:var(--card);border:1.5px solid var(--line);border-radius:12px;color:var(--text);font:inherit;font-size:15px;padding:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="brand"><small>THE SECOND LOOK</small>Sourcing</div>
+    <div class="top-r">
+      <div id="status" class="status num"></div>
+      <button class="icon-btn" id="btnRefresh" aria-label="Refresh">&#x21bb;</button>
+      <button class="icon-btn" id="btnSettings" aria-label="Settings">&#9881;</button>
+    </div>
+  </div>
+  <div id="testbar" class="testbar" style="display:none"></div>
+  <div class="tabs" id="tabs"><button data-t="ov" class="on">Overview</button><button data-t="dt">By date</button></div>
+
+  <div id="viewOv">
+  <div id="goal" class="goal"></div>
+
+  <div class="actions">
+    <button class="logbtn" id="btnLog">＋ Log a haul</button>
+    <button class="pendbtn" id="btnPending"><b id="pendCount">0</b>pending</button>
+  </div>
+
+  <h2>Sourcing numbers</h2>
+  <div class="seg" id="kpiSeg"></div>
+  <div class="kpis" id="kpis"></div>
+  <div class="foot" id="kpiFoot"></div>
+
+  <h2>By source</h2>
+  <div class="seg" id="srcSeg"></div>
+  <div class="tbl" id="srcTbl"></div>
+  <div class="foot">Spend in whole dollars. Small grey line = prior period. ▲▼ color: items up is good, avg cost down is good, spend is neutral.</div>
+
+  <h2>Weekly buys vs goal</h2>
+  <div class="chartcard">
+    <div class="charttitle">Items bought per week, last 12 weeks</div>
+    <div class="chartsub">Mon–Sun weeks · goal = daily listing goal × 7 · tap a bar for details</div>
+    <div id="chart"></div>
+    <div class="legend">
+      <span><i class="sw" style="background:var(--good)"></i>✓ Met goal</span>
+      <span><i class="sw" style="background:var(--bad)"></i>✗ Missed</span>
+      <span><i class="sw" style="background:var(--gray-bar)"></i>This week</span>
+      <span><i class="sw line"></i>Goal</span>
+    </div>
+    <div class="detail" id="chartDetail"></div>
+  </div>
+
+  <h2>Recent hauls</h2>
+  <div class="list" id="recent"></div>
+  <div class="foot">Read-only. Fix or delete a haul in the Buy Cost Tracker sheet.</div>
+  </div>
+
+  <div id="viewDt" hidden>
+    <div class="chips" id="dtChips">
+      <button data-p="today">Today</button><button data-p="yesterday">Yesterday</button><button data-p="thisweek">This week</button><button data-p="lastweek">Last week</button>
+    </div>
+    <div class="dates">
+      <div><label for="dtFrom">From</label><input type="date" id="dtFrom"></div>
+      <div><label for="dtTo">To</label><input type="date" id="dtTo"></div>
+    </div>
+    <div class="dtlabel num" id="dtLabel"></div>
+    <div class="dtcard"><div class="name">Items bought</div><div class="val num" id="dtItems">—</div></div>
+    <div class="dtcard"><div class="name">Total spend</div><div class="val num" id="dtSpend">—</div></div>
+    <div class="dtcard"><div class="name">Average buy cost</div><div class="val num" id="dtAvg">—</div></div>
+    <div class="foot">Finished hauls only. Pending hauls count once their item count is added.</div>
+  </div>
+</div>
+
+<!-- One-time phone setup (only when hosted outside Google) -->
+<div class="sheet" id="setupSheet">
+  <div class="setup">
+    <div class="hd"><h3>Set up this phone</h3></div>
+    <p>Paste the setup link Claude gave you. You only do this once per phone.</p>
+    <textarea id="setupCode" placeholder="Paste setup link here" autocomplete="off" spellcheck="false"></textarea>
+    <div class="field"><div class="flabel">Whose phone is this?</div><div class="buyer" id="setupOwner"></div></div>
+    <div class="btns"><button class="b1" id="setupSave">Save and open</button></div>
+    <div class="heard" id="setupMsg"></div>
+  </div>
+</div>
+
+<!-- Entry sheet -->
+<div class="sheet" id="entry">
+  <div class="wrap">
+    <div class="hd"><h3 id="entryTitle">Log a haul</h3><button class="x" id="entryClose">Cancel</button></div>
+    <textarea class="say" id="say" rows="2" placeholder="Say it: tap here, then tap the 🎤 on your keyboard"></textarea>
+    <div class="sayhint">Example: "Thrift, seventy-three eighteen, twenty-two items"</div>
+    <div class="heard" id="heard"></div>
+
+    <div class="field">
+      <div class="flabel">Source <span id="tagSource"></span></div>
+      <div class="srcgrid" id="srcGrid"></div>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <div class="flabel">Total cost <span id="tagCost"></span></div>
+        <div class="inp" id="boxCost"><span>$</span><input id="cost" inputmode="decimal" autocomplete="off" placeholder="0.00"></div>
+      </div>
+      <div class="field">
+        <div class="flabel">Items <span id="tagItems"></span></div>
+        <div class="inp" id="boxItems"><input id="items" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="0"></div>
+      </div>
+    </div>
+    <div class="field">
+      <div class="flabel">Buyer</div>
+      <div class="buyer" id="buyerSeg"></div>
+    </div>
+    <div class="avg"><span>Average per item</span><b class="num" id="avgPrev">—</b></div>
+    <div class="btns" id="entryBtns"></div>
+  </div>
+</div>
+
+<!-- Pending list -->
+<div class="sheet" id="pendSheet">
+  <div class="wrap">
+    <div class="hd"><h3>Pending hauls</h3><button class="x" id="pendClose">Done</button></div>
+    <div class="foot" style="margin:-6px 2px 12px">Waiting for an item count. Not counted in any number until finished. Tap one to finish, edit or discard.</div>
+    <div class="list plist" id="pendList"></div>
+  </div>
+</div>
+
+<!-- Settings -->
+<div class="sheet" id="setSheet">
+  <div class="wrap">
+    <div class="hd"><h3>Settings</h3><button class="x" id="setClose">Done</button></div>
+    <div class="setrow">
+      <b>Whose phone is this?</b>
+      <p>Buyer fills in with this name on every haul. You can still switch it on any entry.</p>
+      <div class="buyer" id="ownerSeg" style="margin-top:10px"></div>
+    </div>
+    <div class="setrow">
+      <b>Daily listing goal</b>
+      <p id="goalNow"></p>
+      <div class="goalin">
+        <div class="inp"><input id="goalInput" inputmode="numeric" pattern="[0-9]*" placeholder="20"><span style="font-size:15px">/ day</span></div>
+        <button class="b1" id="goalSave">Save</button>
+      </div>
+      <p>A change takes effect next Monday. Past weeks keep the goal they had.</p>
+    </div>
+    <div class="setrow"><b>Data</b><p id="dataInfo"></p></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* Sourcing app core logic. Pure functions, no DOM, so the same code runs in the
+   phone app and in the Node test suite. All dates are Eastern time (America/New_York). */
+(function (root) {
+  'use strict';
+
+  var TZ = 'America/New_York';
+  var SOURCES = ['Thrift', 'Yard Sale', 'Bins', 'Whatnot', 'Wholesale', 'Other'];
+  var WINDOWS = [
+    { id: '7', label: 'Last 7 days', days: 7 },
+    { id: '30', label: 'Last 30 days', days: 30 },
+    { id: '90', label: 'Last 90 days', days: 90 },
+    { id: '365', label: 'Last 365 days', days: 365 },
+    { id: 'life', label: 'Lifetime', days: null }
+  ];
+
+  /* ---------- Eastern calendar helpers (day keys are 'YYYY-MM-DD') ---------- */
+  var dtf = null;
+  function easternDayKey(ms) {
+    if (!dtf) {
+      dtf = new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' });
+    }
+    var p = {};
+    dtf.formatToParts(new Date(ms)).forEach(function (x) { p[x.type] = x.value; });
+    return p.year + '-' + p.month + '-' + p.day;
+  }
+  // Day-key arithmetic in UTC so DST never shifts a calendar day.
+  function keyToUTC(key) { var a = key.split('-'); return Date.UTC(+a[0], +a[1] - 1, +a[2]); }
+  function utcToKey(ms) { return new Date(ms).toISOString().slice(0, 10); }
+  function addDays(key, n) { return utcToKey(keyToUTC(key) + n * 86400000); }
+  function daysBetween(a, b) { return Math.round((keyToUTC(b) - keyToUTC(a)) / 86400000); }
+  function mondayOf(key) {
+    var dow = new Date(keyToUTC(key)).getUTCDay(); // 0 Sun .. 6 Sat
+    return addDays(key, dow === 0 ? -6 : 1 - dow);
+  }
+  function nextMonday(key) { return addDays(mondayOf(key), 7); }
+
+  /* ---------- Rows ---------- */
+  // A haul row: { ms, source, cost, items, buyer }. day key cached on first use.
+  function dayOf(r) { if (!r.day) r.day = easternDayKey(r.ms); return r.day; }
+  function round2(n) { return Math.round(n * 100) / 100; }
+
+  function sumRange(rows, startKey, endKey, filterSource) {
+    var items = 0, spend = 0, hauls = 0;
+    for (var i = 0; i < rows.length; i++) {
+      var r = rows[i], d = dayOf(r);
+      if (startKey && d < startKey) continue;
+      if (endKey && d > endKey) continue;
+      if (filterSource && r.source !== filterSource) continue;
+      items += r.items; spend += r.cost; hauls++;
+    }
+    spend = round2(spend);
+    return { items: items, spend: spend, hauls: hauls, avg: items > 0 ? spend / items : null };
+  }
+
+  function firstDay(rows) {
+    var m = null;
+    rows.forEach(function (r) { var d = dayOf(r); if (m === null || d < m) m = d; });
+    return m;
+  }
+
+  // Current window = the N calendar days ending today (inclusive).
+  // Prior window = the N days just before. Prior is null (shown as N/A) when it
+  // would start before the first haul, or for lifetime.
+  function windowRanges(todayKey, days, first) {
+    if (days === null) return { cur: [null, todayKey], prev: null };
+    var curStart = addDays(todayKey, -(days - 1));
+    var prevEnd = addDays(curStart, -1);
+    var prevStart = addDays(curStart, -days);
+    var prev = (first && prevStart >= first) ? [prevStart, prevEnd] : null;
+    return { cur: [curStart, todayKey], prev: prev };
+  }
+
+  function compare(cur, prev) {
+    // Returns change info for items, spend and avg. dir: 'up' | 'down' | 'flat' | null
+    function ch(a, b) {
+      if (b === null || b === undefined || a === null || a === undefined) return null;
+      var diff = a - b;
+      var pct = b !== 0 ? diff / b : null;
+      var dir = Math.abs(diff) < 1e-9 ? 'flat' : (diff > 0 ? 'up' : 'down');
+      return { diff: diff, pct: pct, dir: dir };
+    }
+    if (!prev) return { items: null, spend: null, avg: null };
+    return {
+      items: ch(cur.items, prev.items),
+      spend: ch(cur.spend, prev.spend),
+      avg: ch(cur.avg, prev.avg)
+    };
+  }
+
+  // Color rule per metric: items up = good, avg down = good, spend = neutral.
+  function tone(metric, change) {
+    if (!change || change.dir === 'flat') return 'neutral';
+    if (metric === 'spend') return 'neutral';
+    if (metric === 'items') return change.dir === 'up' ? 'good' : 'bad';
+    if (metric === 'avg') return change.dir === 'down' ? 'good' : 'bad';
+    return 'neutral';
+  }
+
+  function kpis(rows, todayKey) {
+    var first = firstDay(rows);
+    return WINDOWS.map(function (w) {
+      var rg = windowRanges(todayKey, w.days, first);
+      var cur = sumRange(rows, rg.cur[0], rg.cur[1]);
+      var prev = rg.prev ? sumRange(rows, rg.prev[0], rg.prev[1]) : null;
+      return { id: w.id, label: w.label, days: w.days, range: rg, cur: cur, prev: prev, change: compare(cur, prev) };
+    });
+  }
+
+  function sourceTable(rows, todayKey, windowId) {
+    var w = WINDOWS.filter(function (x) { return x.id === windowId; })[0] || WINDOWS[1];
+    var first = firstDay(rows);
+    var rg = windowRanges(todayKey, w.days, first);
+    var total = sumRange(rows, rg.cur[0], rg.cur[1]);
+    return {
+      window: w, range: rg, total: total,
+      rows: SOURCES.map(function (s) {
+        var cur = sumRange(rows, rg.cur[0], rg.cur[1], s);
+        var prev = rg.prev ? sumRange(rows, rg.prev[0], rg.prev[1], s) : null;
+        return {
+          source: s, cur: cur, prev: prev, change: compare(cur, prev),
+          share: total.items > 0 ? cur.items / total.items : 0
+        };
+      })
+    };
+  }
+
+  /* ---------- Goals ---------- */
+  // settings: [{ effective: 'YYYY-MM-DD' (a Monday), daily: Number }]
+  function dailyGoalFor(mondayKey, settings) {
+    var best = null;
+    (settings || []).forEach(function (s) {
+      if (s.effective <= mondayKey && (!best || s.effective >= best.effective)) best = s;
+    });
+    if (!best && settings && settings.length) {
+      // Week before any setting: use the earliest one.
+      best = settings.slice().sort(function (a, b) { return a.effective < b.effective ? -1 : 1; })[0];
+    }
+    return best ? best.daily : 20;
+  }
+  function weeklyGoalFor(mondayKey, settings) { return dailyGoalFor(mondayKey, settings) * 7; }
+
+  function weekSummary(rows, mondayKey, settings) {
+    var s = sumRange(rows, mondayKey, addDays(mondayKey, 6));
+    var goal = weeklyGoalFor(mondayKey, settings);
+    return { monday: mondayKey, sunday: addDays(mondayKey, 6), items: s.items, spend: s.spend, avg: s.avg,
+      hauls: s.hauls, goal: goal, met: s.items >= goal };
+  }
+
+  function goalCard(rows, todayKey, settings) {
+    var mon = mondayOf(todayKey);
+    var cur = weekSummary(rows, mon, settings);
+    var last = weekSummary(rows, addDays(mon, -7), settings);
+    var first = firstDay(rows);
+    return {
+      current: cur,
+      toGo: Math.max(0, cur.goal - cur.items),
+      pct: cur.goal > 0 ? cur.items / cur.goal : 0,
+      last: (first && last.sunday >= first) ? last : null
+    };
+  }
+
+  function weeklySeries(rows, todayKey, settings, n) {
+    n = n || 12;
+    var mon = mondayOf(todayKey), out = [];
+    var first = firstDay(rows);
+    for (var i = n - 1; i >= 0; i--) {
+      var m = addDays(mon, -7 * i);
+      if (first && addDays(m, 6) < first) continue; // week before any data
+      var w = weekSummary(rows, m, settings);
+      w.inProgress = (i === 0);
+      out.push(w);
+    }
+    return out;
+  }
+
+  /* ---------- Voice parsing (rules only, never guesses money or counts) ---------- */
+  var UNITS = { zero: 0, oh: 0, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9 };
+  var TEENS = { ten: 10, eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16,
+    seventeen: 17, eighteen: 18, nineteen: 19 };
+  var TENS = { twenty: 20, thirty: 30, forty: 40, fourty: 40, fifty: 50, sixty: 60, seventy: 70, eighty: 80, ninety: 90 };
+
+  var SOURCE_RULES = [
+    // Checked in order; first match wins. Bins before Thrift so "goodwill bins" is Bins.
+    { source: 'Bins', re: /\b(bins?|bin store|outlet|by the pound)\b/ },
+    { source: 'Yard Sale', re: /\b(yard ?sales?|garage ?sales?|rummage sales?|moving sales?|church sales?|community sales?|tag sales?|neighborhood sales?|yard|garage)\b/ },
+    { source: 'Whatnot', re: /\b(what ?not|what knot|watt not|whatnots?)\b/ },
+    { source: 'Wholesale', re: /\b(wholesale|whole sale|bulk|bales?|stone)\b/ },
+    { source: 'Thrift', re: /\b(thrift(ing|ed)?|thrift store|thrift shop|goodwill|salvation army|savers|value village)\b/ },
+    { source: 'Other', re: /\b(other|marketplace|facebook|offer ?up|online)\b/ }
+  ];
+  var ITEM_WORDS = '(?:items?|pieces?|pcs|things|units|articles|garments|total)';
+
+  // Convert spoken number words into digit tokens. Each spoken number becomes
+  // its own token so "seventy three eighteen" -> "73 18" and "two seventy six" -> "2 76".
+  function wordsToDigits(text) {
+    var toks = text.split(/\s+/), out = [];
+    var cur = null, last = null; // last: 'unit'|'teen'|'tens'|'hundred'|'thousand'
+    function flush() { if (cur !== null) { out.push('#' + cur); } cur = null; last = null; }
+    for (var i = 0; i < toks.length; i++) {
+      var t = toks[i];
+      if (t === '') continue;
+      if (t === 'a' && (toks[i + 1] === 'hundred' || toks[i + 1] === 'thousand')) { flush(); cur = 1; last = 'unit'; continue; }
+      if (t === 'and' && last === 'hundred' && toks[i + 1] && (UNITS[toks[i + 1]] !== undefined || TEENS[toks[i + 1]] !== undefined || TENS[toks[i + 1]] !== undefined)) continue;
+      if (t === 'oh' && UNITS[toks[i + 1]] !== undefined && toks[i + 1] !== 'oh') {
+        flush(); out.push('#0' + UNITS[toks[i + 1]]); i++; continue;
+      }
+      if (UNITS[t] !== undefined) {
+        var u = UNITS[t];
+        if (cur !== null && (last === 'tens' || last === 'hundred' || last === 'thousand')) { cur += u; last = 'unit'; }
+        else { flush(); cur = u; last = 'unit'; }
+      } else if (TEENS[t] !== undefined) {
+        if (cur !== null && (last === 'hundred' || last === 'thousand')) { cur += TEENS[t]; last = 'teen'; }
+        else { flush(); cur = TEENS[t]; last = 'teen'; }
+      } else if (TENS[t] !== undefined) {
+        if (cur !== null && (last === 'hundred' || last === 'thousand')) { cur += TENS[t]; last = 'tens'; }
+        else { flush(); cur = TENS[t]; last = 'tens'; }
+      } else if (t === 'hundred') {
+        if (cur !== null && cur < 100 && (last === 'unit' || last === 'teen' || last === 'tens')) { cur *= 100; last = 'hundred'; }
+        else { flush(); out.push(t); }
+      } else if (t === 'thousand') {
+        if (cur !== null && cur < 1000) { cur *= 1000; last = 'thousand'; }
+        else { flush(); out.push(t); }
+      } else { flush(); out.push(t); }
+    }
+    flush();
+    return out.join(' ');
+  }
+
+  function normalize(text) {
+    var s = String(text || '').toLowerCase();
+    s = s.replace(/[‘’]/g, "'");
+    s = s.replace(/(\d),(\d{3})/g, '$1$2');        // 1,450 -> 1450
+    s = s.replace(/-/g, ' ');                       // seventy-three
+    s = s.replace(/\$\s*/g, ' $');                  // keep $ as its own marker
+    s = s.replace(/[^a-z0-9$.\s]/g, ' ');
+    s = s.replace(/\.(?!\d)/g, ' ');                // drop sentence periods
+    s = s.replace(/\s+/g, ' ').trim();
+    s = wordsToDigits(s);
+    // Digits typed or dictated as numbers become tokens too.
+    s = s.replace(/(^|\s)(\$?)(\d+(?:\.\d+)?)(?=\s|$)/g, function (m, sp, dol, num) { return sp + dol + '#' + num; });
+    s = s.replace(/\$ #/g, '$#');
+    // "73 point 1 8" -> "73.18"
+    // "73 point 18" or "73 point 1 8": cents are one multi-digit group or up to two single digits
+    s = s.replace(/#(\d+) point #(\d\d+)(?=\s|$)/g, '#$1.$2');
+    s = s.replace(/#(\d+) point #(\d)(?: #(\d)(?=\s|$))?/g, function (m, w, a, b) { return '#' + w + '.' + a + (b || ''); });
+    return s.replace(/\s+/g, ' ').trim();
+  }
+
+  function parseHaul(text) {
+    var res = { source: null, cost: null, items: null, raw: String(text || '') };
+    var lower = String(text || '').toLowerCase();
+    for (var i = 0; i < SOURCE_RULES.length; i++) {
+      if (SOURCE_RULES[i].re.test(lower)) { res.source = SOURCE_RULES[i].source; break; }
+    }
+    var s = normalize(text);
+    var used = {}; // token index -> true
+    var toks = s.split(' ');
+    function num(i) { var t = toks[i]; if (!t) return null; var m = /^\$?#(\d+(?:\.\d+)?)$/.exec(t); return m ? m[1] : null; }
+    function isDollarTok(i) { return toks[i] && toks[i].charAt(0) === '$'; }
+    var itemRe = new RegExp('^' + ITEM_WORDS + '$');
+
+    // 1) Items: an integer right before an item word, or right after "items".
+    for (i = 0; i < toks.length; i++) {
+      var n = num(i);
+      if (n !== null && n.indexOf('.') < 0 && !isDollarTok(i) && toks[i + 1] && itemRe.test(toks[i + 1]) &&
+          !(toks[i + 1] === 'total' && /^(dollars?|bucks|\$)/.test(toks[i + 2] || ''))) {
+        res.items = parseInt(n, 10); used[i] = true; break;
+      }
+      if ((toks[i] === 'items' || toks[i] === 'item' || toks[i] === 'pieces' || toks[i] === 'count') && num(i + 1) !== null &&
+          num(i + 1).indexOf('.') < 0 && !isDollarTok(i + 1)) {
+        res.items = parseInt(num(i + 1), 10); used[i + 1] = true; break;
+      }
+    }
+
+    // 2) Cost, in order of confidence.
+    function setCost(v, idxs) { res.cost = round2(v); idxs.forEach(function (k) { used[k] = true; }); }
+    // a) "$73.18" or "$73" (optionally "$73 18" spoken as dollars then cents)
+    for (i = 0; i < toks.length && res.cost === null; i++) {
+      if (isDollarTok(i) && !used[i]) {
+        var d = num(i);
+        var c = num(i + 1);
+        if (d.indexOf('.') < 0 && c !== null && !used[i + 1] && c.indexOf('.') < 0 && c.length === 2 && !(toks[i + 2] && itemRe.test(toks[i + 2]))) {
+          setCost(parseFloat(d) + parseInt(c, 10) / 100, [i, i + 1]);
+        } else { setCost(parseFloat(d), [i]); }
+      }
+    }
+    // b) "73 dollars (and) 18 (cents)" / "73 bucks 18"
+    for (i = 0; i < toks.length && res.cost === null; i++) {
+      var dv = num(i);
+      if (dv !== null && !used[i] && /^(dollars?|bucks?)$/.test(toks[i + 1] || '')) {
+        var j = i + 2;
+        if (toks[j] === 'and') j++;
+        var cv = num(j);
+        if (cv !== null && !used[j] && cv.indexOf('.') < 0 && parseInt(cv, 10) < 100 && !(toks[j + 1] && itemRe.test(toks[j + 1]))) {
+          setCost(parseFloat(dv) + parseInt(cv, 10) / 100, [i, j]);
+        } else { setCost(parseFloat(dv), [i]); }
+      }
+    }
+    // c) "18 cents" alone after a number already handled; or "X cents" only
+    for (i = 0; i < toks.length && res.cost === null; i++) {
+      var cc = num(i);
+      if (cc !== null && !used[i] && /^cents?$/.test(toks[i + 1] || '') && parseInt(cc, 10) < 100) {
+        setCost(parseInt(cc, 10) / 100, [i]);
+      }
+    }
+    // d) a decimal number: "73.18"
+    for (i = 0; i < toks.length && res.cost === null; i++) {
+      var dn = num(i);
+      if (dn !== null && !used[i] && dn.indexOf('.') >= 0) setCost(parseFloat(dn), [i]);
+    }
+    // e) spoken pair "seventy three eighteen" -> 73 18 -> 73.18. Only when the item count was
+    //    stated and exactly two unclaimed numbers remain side by side; anything else is ambiguous.
+    var unclaimed = [];
+    for (i = 0; i < toks.length; i++) if (num(i) !== null && !used[i]) unclaimed.push(i);
+    var pairOk = res.items !== null && unclaimed.length === 2 && unclaimed[1] === unclaimed[0] + 1;
+    for (i = 0; pairOk && i < toks.length - 1 && res.cost === null; i++) {
+      var a = num(i), b = num(i + 1);
+      if (a !== null && b !== null && !used[i] && !used[i + 1] && a.indexOf('.') < 0 && b.indexOf('.') < 0 &&
+          b.length === 2 && parseInt(a, 10) < 10000 && !(toks[i + 2] && itemRe.test(toks[i + 2]))) {
+        setCost(parseInt(a, 10) + parseInt(b, 10) / 100, [i, i + 1]);
+      }
+    }
+    // f) Exactly one number left and items already found: that number is the cost.
+    if (res.cost === null && res.items !== null) {
+      var left = [];
+      for (i = 0; i < toks.length; i++) if (num(i) !== null && !used[i]) left.push(i);
+      if (left.length === 1) setCost(parseFloat(num(left[0])), left);
+    }
+    if (res.cost !== null && !(res.cost > 0)) res.cost = null;
+    if (res.items !== null && !(res.items > 0)) res.items = null;
+    return res;
+  }
+
+  /* ---------- Date-range presets for the By date tab ---------- */
+  // Returns [fromKey, toKey]. Weeks are Monday-Sunday, matching the goal card.
+  function presetRange(id, todayKey) {
+    if (id === 'today') return [todayKey, todayKey];
+    if (id === 'yesterday') { var y = addDays(todayKey, -1); return [y, y]; }
+    if (id === 'thisweek') return [mondayOf(todayKey), todayKey];
+    if (id === 'lastweek') { var m = addDays(mondayOf(todayKey), -7); return [m, addDays(m, 6)]; }
+    return [todayKey, todayKey];
+  }
+  // Puts two day keys in order so a reversed From/To still gives a result.
+  function orderRange(a, b) { return a <= b ? [a, b] : [b, a]; }
+
+  /* ---------- Formatting ---------- */
+  function money(n) {
+    if (n === null || n === undefined || isNaN(n)) return '—';
+    return '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  function int(n) { return (n === null || n === undefined) ? '—' : Number(n).toLocaleString('en-US'); }
+  function prettyDay(key, opts) {
+    var a = key.split('-');
+    var d = new Date(Date.UTC(+a[0], +a[1] - 1, +a[2], 12));
+    return d.toLocaleDateString('en-US', Object.assign({ timeZone: 'UTC', month: 'short', day: 'numeric' }, opts || {}));
+  }
+
+  var api = {
+    TZ: TZ, SOURCES: SOURCES, WINDOWS: WINDOWS,
+    easternDayKey: easternDayKey, addDays: addDays, daysBetween: daysBetween, mondayOf: mondayOf, nextMonday: nextMonday,
+    sumRange: sumRange, windowRanges: windowRanges, compare: compare, tone: tone, kpis: kpis, sourceTable: sourceTable,
+    dailyGoalFor: dailyGoalFor, weeklyGoalFor: weeklyGoalFor, weekSummary: weekSummary, goalCard: goalCard,
+    weeklySeries: weeklySeries, normalize: normalize, wordsToDigits: wordsToDigits, parseHaul: parseHaul,
+    money: money, int: int, prettyDay: prettyDay, firstDay: firstDay, round2: round2,
+    presetRange: presetRange, orderRange: orderRange
+  };
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+  else root.SL = api;
+})(this);
+
+</script>
+<script>
+var APP_KEY = null;
+var EXEC_URL = "https://script.google.com/macros/s/AKfycbwDPX5tBUpGIaoD8pIagZUHsSJ2TOpzoTU_FSlRUugUBzazaiYl6qbkN-6fxVZcayM/exec";
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  var LS = {
+    get: function (k, d) { try { var v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
+    set: function (k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  };
+  var state = {
+    data: LS.get('sl_data', null),
+    kpiWin: LS.get('sl_kpiWin', '7'),
+    srcWin: LS.get('sl_srcWin', '30'),
+    owner: LS.get('sl_owner', null),
+    key: APP_KEY || LS.get('sl_key', null),
+    tab: 'ov', dt: null,
+    lastSource: LS.get('sl_lastSource', 'Thrift'),
+    queue: LS.get('sl_queue', []),
+    loading: false, lastLoad: null, chartSel: null
+  };
+
+  /* ---------- server calls ---------- */
+  var FATAL = /Not authorized|Pick a|Check the|must be|SHEET_ID/;
+  var IN_GOOGLE = !!(window.google && google.script && google.script.run);
+  function call(fn) {
+    var args = Array.prototype.slice.call(arguments, 1);
+    return new Promise(function (resolve, reject) {
+      var done = false;
+      var t = setTimeout(function () { if (!done) { done = true; reject(new Error('timeout')); } }, 45000);
+      function ok(x) { if (!done) { done = true; clearTimeout(t); resolve(x); } }
+      function bad(e) { if (!done) { done = true; clearTimeout(t); reject(e); } }
+      if (IN_GOOGLE) {
+        var r = google.script.run.withSuccessHandler(ok).withFailureHandler(bad);
+        r[fn].apply(r, [state.key].concat(args));
+        return;
+      }
+      // Hosted outside Google: plain-text POST (no preflight), Google answers with JSON.
+      fetch(EXEC_URL, { method: 'POST', body: JSON.stringify({ fn: fn, key: state.key, args: args }), redirect: 'follow' })
+        .then(function (r) { return r.json(); })
+        .then(function (j) { if (j && j.ok) ok(j.result); else bad(new Error((j && j.error) || 'Server error')); }, bad);
+    });
+  }
+  function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 10); }
+
+  /* ---------- data ---------- */
+  function rows() {
+    if (!state.data) return [];
+    return state.data.hauls.map(function (h) { return { ms: h[0], source: h[1], cost: h[2], items: h[3], buyer: h[4] }; });
+  }
+  function load() {
+    if (state.loading || !state.key) return;
+    state.loading = true; renderStatus();
+    call('api_getData').then(function (d) {
+      state.data = d; state.lastLoad = Date.now(); LS.set('sl_data', d);
+    }).catch(function (e) {
+      if (FATAL.test(String(e && e.message))) toast(String(e.message), 'err');
+    }).then(function () { state.loading = false; renderAll(); });
+  }
+
+  /* ---------- offline-safe write queue ---------- */
+  function enqueue(op) { op.reqId = op.reqId || uid(); op.at = Date.now(); state.queue.push(op); LS.set('sl_queue', state.queue); renderStatus(); return flush(); }
+  var flushing = false;
+  function flush() {
+    if (flushing || !state.queue.length || !state.key) return Promise.resolve();
+    flushing = true;
+    var op = state.queue[0];
+    var p;
+    if (op.type === 'add') p = call('api_addHaul', op.haul, op.reqId, !!op.allowDup);
+    else if (op.type === 'pend') p = call('api_savePending', op.haul, op.reqId);
+    else if (op.type === 'upd') p = call('api_updatePending', op.id, op.haul, op.reqId);
+    else if (op.type === 'fin') p = call('api_finishPending', op.id, op.haul, op.reqId);
+    else if (op.type === 'del') p = call('api_discardPending', op.id, op.reqId);
+    return p.then(function (res) {
+      if (res && res.duplicate) {
+        var again = window.confirm('You just saved this same haul (' + op.haul.source + ', ' + SL.money(op.haul.cost) + ', ' + op.haul.items +
+          ' items). Save it again as a second haul?');
+        if (again) { op.allowDup = true; op.reqId = uid(); LS.set('sl_queue', state.queue); flushing = false; return flush(); }
+        state.queue.shift(); LS.set('sl_queue', state.queue); toast('Not saved twice.', 'warn');
+      } else {
+        state.queue.shift(); LS.set('sl_queue', state.queue);
+        if (res && res.gone) toast('That pending haul was already finished or removed on the other phone.', 'warn');
+        else if (op.notify) toast(op.notify);
+      }
+      flushing = false;
+      if (state.queue.length) return flush();
+      load();
+    }, function (e) {
+      flushing = false;
+      if (FATAL.test(String(e && e.message))) {
+        state.queue.shift(); LS.set('sl_queue', state.queue);
+        toast('Not saved: ' + e.message, 'err');
+        if (state.queue.length) return flush();
+      } else {
+        renderStatus();
+        setTimeout(flush, 20000);
+      }
+    }).then(renderStatus);
+  }
+  window.addEventListener('online', function () { flush(); load(); });
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) { flush(); load(); } });
+
+  /* ---------- rendering ---------- */
+  function todayKey() { return SL.easternDayKey(Date.now()); }
+  function settings() { return state.data ? state.data.settings : [{ effective: '2026-03-02', daily: 20 }]; }
+
+  function renderStatus() {
+    var el = $('status');
+    var q = state.queue.length;
+    if (q) { el.className = 'status warn'; el.textContent = 'Waiting to sync (' + q + ')' + (IN_GOOGLE ? ' · keep app open' : ''); return; }
+    el.className = 'status';
+    if (state.loading && !state.data) el.textContent = 'Loading…';
+    else if (state.loading) el.textContent = 'Updating…';
+    else if (state.lastLoad) el.textContent = new Date(state.lastLoad).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    else if (state.data) el.textContent = 'Offline copy';
+    else el.textContent = '';
+  }
+
+  function renderGoal() {
+    var g = SL.goalCard(rows(), todayKey(), settings());
+    var c = g.current, met = c.met;
+    var pct = Math.min(1, g.pct);
+    var html = '<div class="lbl"><span>THIS WEEK\'S BUYS</span><span>' + SL.prettyDay(c.monday) + ' – ' + SL.prettyDay(c.sunday) + '</span></div>' +
+      '<div class="big num">' + SL.int(c.items) + '<small> / ' + SL.int(c.goal) + '</small>' + (met ? '<span class="metbadge">✓ GOAL MET</span>' : '') + '</div>' +
+      '<div class="bar"><i style="width:' + (pct * 100).toFixed(1) + '%"></i></div>' +
+      '<div class="sub num"><span>' + (met ? '<b>' + SL.int(c.items - c.goal) + '</b> over goal' : '<b>' + SL.int(g.toGo) + '</b> to go') + '</span>' +
+      '<span>covers next week\'s listings</span></div>';
+    if (g.last) {
+      var l = g.last;
+      html += '<div class="lastweek num">Last week: <span class="' + (l.met ? 'good' : 'bad') + '">' + (l.met ? '✓ ' : '✗ ') + SL.int(l.items) + ' / ' + SL.int(l.goal) + '</span>' +
+        (l.met ? ' · goal met' : ' · ' + SL.int(l.goal - l.items) + ' short') + '</div>';
+    }
+    $('goal').className = 'goal' + (met ? ' met' : '');
+    $('goal').innerHTML = html;
+  }
+
+  function segHtml(cur) {
+    return SL.WINDOWS.map(function (w) {
+      var t = w.id === 'life' ? 'Life' : w.id + 'd';
+      return '<button data-w="' + w.id + '" class="' + (w.id === cur ? 'on' : '') + '">' + t + '</button>';
+    }).join('');
+  }
+  function chgHtml(metric, change, fmt) {
+    if (!change) return '<span class="chg neutral na">N/A</span>';
+    var t = SL.tone(metric, change);
+    var arrow = change.dir === 'up' ? '▲' : change.dir === 'down' ? '▼' : '■';
+    var txt;
+    if (metric === 'avg') txt = (change.diff >= 0 ? '+' : '−') + SL.money(Math.abs(change.diff)).replace('$', '$');
+    else txt = change.pct === null ? 'new' : (Math.abs(change.pct * 100) < 0.5 ? '0%' : (change.pct > 0 ? '+' : '−') + Math.abs(change.pct * 100).toFixed(0) + '%');
+    return '<span class="chg ' + t + '">' + arrow + ' ' + txt + '</span>';
+  }
+  function renderKpis() {
+    $('kpiSeg').innerHTML = segHtml(state.kpiWin);
+    var all = SL.kpis(rows(), todayKey());
+    var w = all.filter(function (x) { return x.id === state.kpiWin; })[0];
+    var p = w.prev;
+    function card(name, metric, val, prevVal) {
+      return '<div class="kpi"><div><div class="name">' + name + '</div><div class="val num">' + val + '</div></div>' +
+        '<div class="cmp num">' + chgHtml(metric, w.change[metric]) + '<br>' + (p ? 'prior: ' + prevVal : 'no prior period') + '</div></div>';
+    }
+    $('kpis').innerHTML =
+      card('Items bought', 'items', SL.int(w.cur.items), p ? SL.int(p.items) : '') +
+      card('Average buy cost', 'avg', SL.money(w.cur.avg), p ? SL.money(p.avg) : '') +
+      card('Total spend', 'spend', SL.money(w.cur.spend), p ? SL.money(p.spend) : '');
+    var foot;
+    if (w.id === 'life') foot = 'All hauls since ' + SL.prettyDay(SL.firstDay(rows()) || todayKey(), { year: 'numeric' }) + '. No prior period to compare.';
+    else if (!p) foot = w.label + ' (' + SL.prettyDay(w.range.cur[0]) + ' – ' + SL.prettyDay(w.range.cur[1]) + '). N/A: the prior ' + w.days + ' days start before your first haul.';
+    else foot = w.label + ' (' + SL.prettyDay(w.range.cur[0]) + ' – ' + SL.prettyDay(w.range.cur[1]) + ') vs prior ' + w.days + ' days (' + SL.prettyDay(p ? w.range.prev[0] : '') + ' – ' + SL.prettyDay(w.range.prev[1]) + '). Rolling, not Mon–Sun.';
+    $('kpiFoot').textContent = foot;
+  }
+
+  function arrowOnly(metric, change) {
+    if (!change) return '<span class="arr neutral">N/A</span>';
+    var t = SL.tone(metric, change);
+    return '<span class="arr ' + t + '">' + (change.dir === 'up' ? '▲' : change.dir === 'down' ? '▼' : '■') + '</span>';
+  }
+  function dollars(n) { return '$' + Math.round(n).toLocaleString('en-US'); }
+  function renderSources() {
+    $('srcSeg').innerHTML = segHtml(state.srcWin);
+    var st = SL.sourceTable(rows(), todayKey(), state.srcWin);
+    var hasPrev = !!st.range.prev;
+    var h = '<div class="tr th"><div>Source</div><div class="r">Items</div><div class="r">Spend</div><div class="r">Avg</div></div>';
+    st.rows.forEach(function (r) {
+      var z = r.cur.items === 0;
+      h += '<div class="tr' + (z ? ' zero' : '') + '"><div><div class="src">' + r.source + '</div>' +
+        '<div class="share"><i style="width:' + (r.share * 100).toFixed(1) + '%"></i></div><div class="sharep num">' + Math.round(r.share * 100) + '% of items</div></div>' +
+        '<div class="cell r num"><b>' + SL.int(r.cur.items) + '</b><div class="p">' + (hasPrev ? arrowOnly('items', r.change.items) + ' ' + SL.int(r.prev.items) : 'N/A') + '</div></div>' +
+        '<div class="cell r num"><b>' + dollars(r.cur.spend) + '</b><div class="p">' + (hasPrev ? dollars(r.prev.spend) : 'N/A') + '</div></div>' +
+        '<div class="cell r num"><b>' + (r.cur.avg === null ? '—' : SL.money(r.cur.avg)) + '</b><div class="p">' +
+          (hasPrev ? (r.cur.avg !== null && r.prev.avg !== null ? arrowOnly('avg', r.change.avg) + ' ' : '') + (r.prev.avg === null ? '—' : SL.money(r.prev.avg)) : 'N/A') + '</div></div></div>';
+    });
+    var t = st.total;
+    h += '<div class="tr total"><div class="src">All sources</div><div class="cell r num"><b>' + SL.int(t.items) + '</b></div>' +
+      '<div class="cell r num"><b>' + dollars(t.spend) + '</b></div><div class="cell r num"><b>' + SL.money(t.avg) + '</b></div></div>';
+    $('srcTbl').innerHTML = h;
+  }
+
+  function renderChart() {
+    var s = SL.weeklySeries(rows(), todayKey(), settings(), 12);
+    var W = 340, H = 210, L = 34, R = 8, T = 14, B = 26;
+    var maxV = 0; s.forEach(function (w) { maxV = Math.max(maxV, w.items, w.goal); });
+    var step = maxV > 400 ? 100 : 50, top = Math.ceil((maxV * 1.08) / step) * step;
+    var y = function (v) { return T + (H - T - B) * (1 - v / top); };
+    var n = s.length, slot = (W - L - R) / Math.max(n, 1), bw = Math.min(20, slot - 6);
+    var g = '';
+    for (var v = 0; v <= top; v += step) {
+      g += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(v) + '" y2="' + y(v) + '" stroke="#2A2A30" stroke-width="1"/>' +
+        '<text x="' + (L - 6) + '" y="' + (y(v) + 4) + '" fill="#8A8A93" font-size="10" text-anchor="end">' + v + '</text>';
+    }
+    s.forEach(function (w, i) {
+      var cx = L + slot * i + slot / 2, x = cx - bw / 2, by = y(w.items), h = Math.max(0, y(0) - by);
+      var fill = w.inProgress ? '#5C5C66' : (w.met ? '#4CC38A' : '#F2555A');
+      var rr = Math.min(4, h / 2);
+      // bar with 4px rounded top, square at the baseline
+      if (h > 0) g += '<path d="M' + x + ',' + y(0) + ' V' + (by + rr) + ' Q' + x + ',' + by + ' ' + (x + rr) + ',' + by + ' H' + (x + bw - rr) +
+        ' Q' + (x + bw) + ',' + by + ' ' + (x + bw) + ',' + (by + rr) + ' V' + y(0) + ' Z" fill="' + fill + '"' + (state.chartSel === i ? ' stroke="#F2F2F3" stroke-width="2"' : '') + '/>';
+      // goal: a short level line over each week, so a goal change shows as a step
+      g += '<line x1="' + (L + slot * i + 1) + '" x2="' + (L + slot * (i + 1) - 1) + '" y1="' + y(w.goal) + '" y2="' + y(w.goal) + '" stroke="#F2F2F3" stroke-width="2"/>';
+      if (i % 2 === (n - 1) % 2) {
+        g += '<text x="' + cx + '" y="' + (H - 8) + '" fill="' + (w.inProgress ? '#F2F2F3' : '#8A8A93') + '" font-size="10" text-anchor="middle">' +
+          (w.inProgress ? 'Now' : SL.prettyDay(w.monday).replace(/^(\w+) /, function (m, mo) { return mo + ' '; })) + '</text>';
+      }
+      g += '<rect data-i="' + i + '" x="' + (L + slot * i) + '" y="' + T + '" width="' + slot + '" height="' + (H - T - B) + '" fill="transparent"/>';
+    });
+    g += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(0) + '" y2="' + y(0) + '" stroke="#55555E" stroke-width="1"/>';
+    $('chart').innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" role="img" aria-label="Items bought per week for the last 12 weeks against the weekly goal">' + g + '</svg>';
+    $('chart').onclick = function (e) {
+      var i = e.target.getAttribute && e.target.getAttribute('data-i');
+      if (i === null || i === undefined) return;
+      state.chartSel = (state.chartSel === +i) ? null : +i;
+      renderChart();
+    };
+    var d = $('chartDetail');
+    if (state.chartSel !== null && s[state.chartSel]) {
+      var w = s[state.chartSel];
+      d.className = 'detail on num';
+      d.innerHTML = '<b>' + SL.prettyDay(w.monday) + ' – ' + SL.prettyDay(w.sunday) + (w.inProgress ? ' (this week)' : '') + '</b><br>' +
+        SL.int(w.items) + ' items of ' + SL.int(w.goal) + ' goal ' + (w.inProgress ? '' : (w.met ? '· ✓ met' : '· ✗ missed by ' + SL.int(w.goal - w.items))) +
+        '<br>Spend ' + SL.money(w.spend) + ' · avg ' + SL.money(w.avg) + ' per item · ' + w.hauls + ' haul' + (w.hauls === 1 ? '' : 's');
+    } else { d.className = 'detail'; d.innerHTML = ''; }
+  }
+
+  function fmtWhen(ms) {
+    var d = new Date(ms);
+    return d.toLocaleDateString('en-US', { timeZone: SL.TZ, month: 'short', day: 'numeric' }) + ' · ' +
+      d.toLocaleTimeString('en-US', { timeZone: SL.TZ, hour: 'numeric', minute: '2-digit' });
+  }
+  function renderRecent() {
+    var r = rows().slice().sort(function (a, b) { return b.ms - a.ms; }).slice(0, 10);
+    var h = '';
+    state.queue.filter(function (o) { return o.type === 'add' || o.type === 'fin'; }).forEach(function (o) {
+      h += '<div class="li"><div><div class="a">' + o.haul.source + '</div><div class="s sync">Waiting to sync · ' + o.haul.buyer + '</div></div>' +
+        '<div class="rt num"><b>' + SL.money(o.haul.cost) + '</b><span class="s">' + o.haul.items + ' items</span></div></div>';
+    });
+    r.forEach(function (x) {
+      h += '<div class="li"><div><div class="a">' + x.source + '</div><div class="s">' + fmtWhen(x.ms) + ' · ' + x.buyer + '</div></div>' +
+        '<div class="rt num"><b>' + SL.money(x.cost) + '</b><span class="s">' + x.items + ' items · ' + SL.money(x.cost / x.items) + '</span></div></div>';
+    });
+    $('recent').innerHTML = h || '<div class="empty">No hauls yet.</div>';
+  }
+
+  function pendingList() {
+    var p = state.data ? state.data.pending.slice() : [];
+    // hide ones removed locally but not yet synced; show ones saved locally but not yet synced
+    var removed = {};
+    state.queue.forEach(function (o) { if (o.type === 'fin' || o.type === 'del') removed[o.id] = true; });
+    p = p.filter(function (x) { return !removed[x.id]; });
+    state.queue.forEach(function (o) { if (o.type === 'pend') p.push({ id: null, local: o.reqId, started: o.at, source: o.haul.source, cost: o.haul.cost, buyer: o.haul.buyer }); });
+    return p;
+  }
+  function renderPending() {
+    var p = pendingList();
+    $('pendCount').textContent = p.length;
+    $('btnPending').className = 'pendbtn' + (p.length ? ' has' : '');
+    var h = '';
+    p.forEach(function (x, i) {
+      h += '<div class="li" data-i="' + i + '"><div><div class="a">' + x.source + ' · ' + SL.money(x.cost) + '</div><div class="s">' +
+        (x.id ? 'Started ' + fmtWhen(x.started) : '<span class="sync">Waiting to sync</span>') + ' · ' + x.buyer + '</div></div>' +
+        '<div class="rt" style="color:var(--orange-hi);font-weight:700">' + (x.id ? 'Add count ›' : '') + '</div></div>';
+    });
+    $('pendList').innerHTML = h || '<div class="empty">Nothing pending.</div>';
+    Array.prototype.forEach.call($('pendList').querySelectorAll('.li'), function (el) {
+      el.onclick = function () { var x = p[+el.getAttribute('data-i')]; if (x.id) { $('pendSheet').classList.remove('on'); openEntry('pending', x); } };
+    });
+  }
+
+  function renderTestBar() {
+    var name = state.data && state.data.sheetName;
+    var on = name && /test/i.test(name);
+    $('testbar').style.display = on ? 'block' : 'none';
+    if (on) $('testbar').textContent = 'TEST MODE · writing to "' + name + '". Your real tracker is not touched.';
+  }
+
+  /* ---------- By date tab ---------- */
+  function setRange(from, to, preset) {
+    var r = SL.orderRange(from, to);
+    state.dt = { from: r[0], to: r[1], preset: preset || null };
+    renderDates();
+  }
+  function renderDates() {
+    if (!state.dt) { var t0 = todayKey(); state.dt = { from: t0, to: t0, preset: 'today' }; }
+    var d = state.dt;
+    Array.prototype.forEach.call($('dtChips').querySelectorAll('button'), function (b) {
+      b.className = b.getAttribute('data-p') === d.preset ? 'on' : '';
+    });
+    $('dtFrom').value = d.from; $('dtTo').value = d.to;
+    var n = SL.daysBetween(d.from, d.to) + 1;
+    $('dtLabel').textContent = d.from === d.to
+      ? SL.prettyDay(d.from, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+      : SL.prettyDay(d.from, { month: 'short', day: 'numeric', year: 'numeric' }) + ' – ' + SL.prettyDay(d.to, { month: 'short', day: 'numeric', year: 'numeric' }) + ' · ' + n + ' days';
+    var s = SL.sumRange(rows(), d.from, d.to);
+    $('dtItems').textContent = SL.int(s.items);
+    $('dtSpend').textContent = SL.money(s.spend);
+    $('dtAvg').textContent = s.avg === null ? '—' : SL.money(s.avg);
+  }
+  function showTab(t) {
+    state.tab = t;
+    Array.prototype.forEach.call($('tabs').querySelectorAll('button'), function (b) { b.className = b.getAttribute('data-t') === t ? 'on' : ''; });
+    $('viewOv').hidden = t !== 'ov';
+    $('viewDt').hidden = t !== 'dt';
+    if (t === 'dt') renderDates();
+    window.scrollTo(0, 0);
+  }
+
+  function renderAll() {
+    renderStatus(); renderTestBar(); renderGoal(); renderKpis(); renderSources(); renderChart(); renderRecent(); renderPending();
+    if (state.tab === 'dt') renderDates();
+    if ($('setSheet').classList.contains('on')) renderSettings();
+  }
+
+  /* ---------- entry sheet ---------- */
+  var E = { mode: 'new', pend: null, source: null, flags: {}, voiced: false };
+  function openEntry(mode, pend) {
+    E.mode = mode; E.pend = pend || null; E.flags = {}; E.voiced = false;
+    $('say').value = ''; $('heard').innerHTML = '';
+    if (pend) {
+      E.source = pend.source; $('cost').value = pend.cost.toFixed(2); $('items').value = ''; E.buyer = pend.buyer;
+    } else {
+      E.source = state.lastSource; $('cost').value = ''; $('items').value = ''; E.buyer = state.owner || 'Todd';
+    }
+    $('entryTitle').textContent = pend ? 'Finish pending haul' : 'Log a haul';
+    renderEntry();
+    $('entry').classList.add('on');
+    $('entry').scrollTop = 0;
+  }
+  function closeEntry() { $('entry').classList.remove('on'); document.activeElement && document.activeElement.blur && document.activeElement.blur(); }
+
+  function costVal() { var v = $('cost').value.replace(/[^0-9.]/g, ''); if (!v || (v.match(/\./g) || []).length > 1) return null; var n = Math.round(parseFloat(v) * 100) / 100; return isFinite(n) && n >= 0 ? n : null; }
+  function itemsVal() { var v = $('items').value.replace(/[^0-9]/g, ''); if (!v) return null; var n = parseInt(v, 10); return n > 0 ? n : null; }
+
+  function setTag(id, kind) {
+    $(id).innerHTML = kind === 'check' ? '<span class="tag check">CHECK</span>' : kind === 'need' ? '<span class="tag need">NEEDED</span>' : '';
+  }
+  function renderEntry() {
+    $('srcGrid').innerHTML = SL.SOURCES.map(function (s) { return '<button data-s="' + s + '" class="' + (s === E.source ? 'on' : '') + '">' + s + '</button>'; }).join('');
+    Array.prototype.forEach.call($('srcGrid').querySelectorAll('button'), function (b) {
+      b.onclick = function () { E.source = b.getAttribute('data-s'); E.flags.source = null; renderEntry(); };
+    });
+    $('buyerSeg').innerHTML = ['Todd', 'Jennifer'].map(function (b) { return '<button data-b="' + b + '" class="' + (b === E.buyer ? 'on' : '') + '">' + b + '</button>'; }).join('');
+    Array.prototype.forEach.call($('buyerSeg').querySelectorAll('button'), function (b) {
+      b.onclick = function () { E.buyer = b.getAttribute('data-b'); renderEntry(); };
+    });
+    validate();
+  }
+  function validate() {
+    var c = costVal(), it = itemsVal();
+    var srcK = !E.source ? 'need' : (E.flags.source === 'check' ? 'check' : '');
+    var costK = c === null ? (E.voiced || $('cost').value ? 'need' : '') : (E.flags.cost === 'check' ? 'check' : '');
+    var itK = it === null ? (E.voiced || $('items').value ? 'need' : '') : (E.flags.items === 'check' ? 'check' : '');
+    setTag('tagSource', srcK); $('srcGrid').className = 'srcgrid ' + srcK;
+    setTag('tagCost', costK); $('boxCost').className = 'inp ' + costK;
+    setTag('tagItems', itK); $('boxItems').className = 'inp ' + itK;
+    $('avgPrev').textContent = (c !== null && it) ? SL.money(c / it) : '—';
+    var okFull = !!E.source && c !== null && !!it;
+    var okPend = !!E.source && c !== null;
+    var b = '';
+    if (E.mode === 'new') {
+      b += '<button class="b1" id="bSave"' + (okFull ? '' : ' disabled') + '>Save haul</button>';
+      b += '<button class="b2" id="bSaveMore"' + (okFull ? '' : ' disabled') + '>Save and add another</button>';
+      b += '<button class="b2" id="bPend"' + (okPend ? '' : ' disabled') + '>Save as pending (count later)</button>';
+    } else {
+      b += '<button class="b1" id="bFinish"' + (okFull ? '' : ' disabled') + '>Finish and save</button>';
+      b += '<button class="b2" id="bFinishMore"' + (okFull ? '' : ' disabled') + '>Finish and add another</button>';
+      b += '<button class="b2" id="bUpd"' + (okPend ? '' : ' disabled') + '>Save changes, keep pending</button>';
+      b += '<button class="b3" id="bDel">Discard this pending haul</button>';
+    }
+    $('entryBtns').innerHTML = b;
+    bind('bSave', function () { submit('add', false); });
+    bind('bSaveMore', function () { submit('add', true); });
+    bind('bPend', function () { submit('pend', false); });
+    bind('bFinish', function () { submit('fin', false); });
+    bind('bFinishMore', function () { submit('fin', true); });
+    bind('bUpd', function () { submit('upd', false); });
+    bind('bDel', function () {
+      if (window.confirm('Discard this pending haul (' + E.pend.source + ', ' + SL.money(E.pend.cost) + ')? It will not be logged.')) {
+        enqueue({ type: 'del', id: E.pend.id, notify: 'Pending haul discarded.' }); closeEntry(); renderAll();
+      }
+    });
+  }
+  function bind(id, fn) { var el = $(id); if (el) el.onclick = fn; }
+
+  function submit(type, again) {
+    var haul = { source: E.source, cost: costVal(), items: itemsVal(), buyer: E.buyer };
+    var line = haul.source + ', ' + SL.money(haul.cost) + (haul.items ? ', ' + haul.items + ' items' : '');
+    if (type === 'add') enqueue({ type: 'add', haul: haul, notify: 'Saved ✓ ' + line });
+    if (type === 'pend') enqueue({ type: 'pend', haul: { source: haul.source, cost: haul.cost, buyer: haul.buyer }, notify: 'Saved as pending ✓ ' + line + '. Add the count later.' });
+    if (type === 'fin') enqueue({ type: 'fin', id: E.pend.id, haul: haul, notify: 'Finished and saved ✓ ' + line });
+    if (type === 'upd') enqueue({ type: 'upd', id: E.pend.id, haul: { source: haul.source, cost: haul.cost, buyer: haul.buyer }, notify: 'Pending haul updated.' });
+    state.lastSource = haul.source; LS.set('sl_lastSource', haul.source);
+    toast((type === 'pend' ? 'Saving as pending… ' : 'Saving… ') + line);
+    renderAll();
+    if (again) { openEntry('new'); }
+    else closeEntry();
+  }
+
+  var sayTimer = null;
+  function readSay() {
+    var txt = $('say').value.trim();
+    if (!txt) { $('heard').innerHTML = ''; return; }
+    var r = SL.parseHaul(txt);
+    E.voiced = true;
+    var got = [];
+    if (r.source) { E.source = r.source; E.flags.source = 'check'; got.push(r.source); }
+    else { E.flags.source = 'check'; } // last-used source stays, highlighted for a glance
+    if (r.cost !== null) { $('cost').value = r.cost.toFixed(2); E.flags.cost = 'check'; got.push(SL.money(r.cost)); }
+    else { $('cost').value = ''; E.flags.cost = null; }
+    if (r.items !== null) { $('items').value = String(r.items); E.flags.items = 'check'; got.push(r.items + ' items'); }
+    else { $('items').value = ''; E.flags.items = null; }
+    var miss = [];
+    if (r.cost === null) miss.push('cost');
+    if (r.items === null) miss.push('item count');
+    $('heard').innerHTML = (got.length ? 'Filled in: <b>' + got.join(' · ') + '</b>. ' : '') +
+      (miss.length ? 'Couldn\'t tell the ' + miss.join(' or ') + ', so type it below.' : 'Check the highlighted fields, then save.');
+    renderEntry();
+  }
+  $('say').addEventListener('input', function () { clearTimeout(sayTimer); sayTimer = setTimeout(readSay, 900); });
+  $('say').addEventListener('blur', function () { clearTimeout(sayTimer); readSay(); });
+  $('cost').addEventListener('input', function () { E.flags.cost = null; validate(); });
+  $('items').addEventListener('input', function () { E.flags.items = null; validate(); });
+
+  /* ---------- settings ---------- */
+  function renderSettings() {
+    $('ownerSeg').innerHTML = ['Todd', 'Jennifer'].map(function (b) { return '<button data-b="' + b + '" class="' + (b === state.owner ? 'on' : '') + '">' + b + '</button>'; }).join('');
+    Array.prototype.forEach.call($('ownerSeg').querySelectorAll('button'), function (b) {
+      b.onclick = function () { state.owner = b.getAttribute('data-b'); LS.set('sl_owner', state.owner); renderSettings(); };
+    });
+    var tk = todayKey(), mon = SL.mondayOf(tk), nxt = SL.nextMonday(tk);
+    var cur = SL.dailyGoalFor(mon, settings()), next = SL.dailyGoalFor(nxt, settings());
+    $('goalNow').innerHTML = 'This week: <b>' + cur + ' a day</b> (' + cur * 7 + ' a week).' +
+      (next !== cur ? ' Starting ' + SL.prettyDay(nxt) + ': <b>' + next + ' a day</b> (' + next * 7 + ' a week).' : '');
+    $('goalInput').placeholder = String(next);
+    var d = state.data;
+    $('dataInfo').textContent = d ? ('Reading "' + d.sheetName + '": ' + d.hauls.length + ' hauls, ' + d.pending.length + ' pending.') : 'Not loaded yet.';
+  }
+  $('goalSave').onclick = function () {
+    var v = parseInt(($('goalInput').value || '').replace(/[^0-9]/g, ''), 10);
+    if (!(v >= 1 && v <= 1000)) { toast('Enter a whole number of listings per day.', 'err'); return; }
+    var nxt = SL.nextMonday(todayKey());
+    if (!window.confirm('Change the daily listing goal to ' + v + ' a day (' + v * 7 + ' a week), starting Monday ' + SL.prettyDay(nxt) + '? Both phones will use it.')) return;
+    call('api_setGoal', v, state.owner || '').then(function (r) {
+      toast('Goal set to ' + r.daily + ' a day from ' + SL.prettyDay(r.effective) + '.'); $('goalInput').value = ''; load();
+    }).catch(function (e) { toast('Couldn\'t save the goal: ' + (e && e.message ? e.message : 'no connection') + '. Try again with signal.', 'err'); });
+  };
+
+  /* ---------- toast ---------- */
+  var toastT = null;
+  function toast(msg, kind) {
+    var t = $('toast'); t.textContent = msg; t.className = 'toast on' + (kind ? ' ' + kind : '');
+    clearTimeout(toastT); toastT = setTimeout(function () { t.className = 'toast' + (kind ? ' ' + kind : ''); }, 3800);
+  }
+
+  /* ---------- wiring ---------- */
+  $('btnLog').onclick = function () { if (!state.owner) { openSettings(true); return; } openEntry('new'); };
+  $('entryClose').onclick = closeEntry;
+  $('btnPending').onclick = function () { renderPending(); $('pendSheet').classList.add('on'); };
+  $('pendClose').onclick = function () { $('pendSheet').classList.remove('on'); };
+  function openSettings(first) { renderSettings(); $('setSheet').classList.add('on'); if (first) toast('First, pick whose phone this is.', 'warn'); }
+  $('btnSettings').onclick = function () { openSettings(false); };
+  $('setClose').onclick = function () { $('setSheet').classList.remove('on'); renderAll(); };
+  $('btnRefresh').onclick = function () { flush(); load(); };
+  $('kpiSeg').onclick = function (e) { var w = e.target.getAttribute('data-w'); if (w) { state.kpiWin = w; LS.set('sl_kpiWin', w); renderKpis(); } };
+  $('srcSeg').onclick = function (e) { var w = e.target.getAttribute('data-w'); if (w) { state.srcWin = w; LS.set('sl_srcWin', w); renderSources(); } };
+
+  $('tabs').onclick = function (e) { var t = e.target.getAttribute('data-t'); if (t) showTab(t); };
+  $('dtChips').onclick = function (e) { var p = e.target.getAttribute('data-p'); if (p) { var r = SL.presetRange(p, todayKey()); setRange(r[0], r[1], p); } };
+  $('dtFrom').onchange = function () { if (this.value) setRange(this.value, state.dt.to, null); };
+  $('dtTo').onchange = function () { if (this.value) setRange(state.dt.from, this.value, null); };
+
+  /* ---------- one-time setup when hosted outside Google ---------- */
+  function parseSetup(text) {
+    var out = {};
+    var k = /(?:^|[#&?]k=)([0-9a-f]{40})/i.exec(text) || /^\s*([0-9a-f]{40})\s*$/i.exec(text);
+    if (k) out.key = k[1].toLowerCase();
+    var u = /[#&?]u=(todd|jennifer)/i.exec(text);
+    if (u) out.owner = u[1].charAt(0).toUpperCase() + u[1].slice(1).toLowerCase();
+    return out;
+  }
+  function applySetup(cfg) {
+    if (cfg.key) { state.key = cfg.key; LS.set('sl_key', cfg.key); }
+    if (cfg.owner) { state.owner = cfg.owner; LS.set('sl_owner', cfg.owner); }
+  }
+  if (!IN_GOOGLE && location.hash) {
+    applySetup(parseSetup(location.hash));
+    try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+  }
+  function renderSetupOwner(sel) {
+    $('setupOwner').innerHTML = ['Todd', 'Jennifer'].map(function (b) { return '<button data-b="' + b + '" class="' + (b === sel ? 'on' : '') + '">' + b + '</button>'; }).join('');
+    Array.prototype.forEach.call($('setupOwner').querySelectorAll('button'), function (b) {
+      b.onclick = function () { renderSetupOwner(b.getAttribute('data-b')); };
+    });
+  }
+  $('setupCode').addEventListener('input', function () {
+    var c = parseSetup($('setupCode').value);
+    if (c.owner) renderSetupOwner(c.owner);
+  });
+  $('setupSave').onclick = function () {
+    var c = parseSetup($('setupCode').value);
+    var sel = $('setupOwner').querySelector('button.on');
+    if (!c.key) { $('setupMsg').textContent = 'That doesn\'t look like the setup link. Paste the whole link from Claude.'; return; }
+    if (!sel) { $('setupMsg').textContent = 'Pick whose phone this is.'; return; }
+    applySetup({ key: c.key, owner: sel.getAttribute('data-b') });
+    $('setupSheet').classList.remove('on');
+    load(); flush();
+  };
+
+  renderAll();
+  if (!IN_GOOGLE && !state.key) { renderSetupOwner(state.owner); $('setupSheet').classList.add('on'); }
+  else if (!state.owner) openSettings(true);
+  if (state.key) { load(); flush(); }
+  setInterval(function () { if (!document.hidden) load(); }, 120000);
+})();
+</script>
+</body>
+</html>
