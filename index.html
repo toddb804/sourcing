@@ -231,7 +231,7 @@ svg text{font-family:-apple-system,BlinkMacSystemFont,sans-serif}
   <h2>Weekly buys vs goal</h2>
   <div class="chartcard">
     <div class="charttitle">Items bought per week, last 12 weeks</div>
-    <div class="chartsub">Mon–Sun weeks · goal = daily listing goal × 7 · tap a bar for details</div>
+    <div class="chartsub">Mon–Sun weeks · goal = weekly buy goal · tap a bar for details</div>
     <div id="chart"></div>
     <div class="legend">
       <span><i class="sw" style="background:var(--good)"></i>✓ Met goal</span>
@@ -325,10 +325,10 @@ svg text{font-family:-apple-system,BlinkMacSystemFont,sans-serif}
       <div class="buyer" id="ownerSeg" style="margin-top:10px"></div>
     </div>
     <div class="setrow">
-      <b>Daily listing goal</b>
+      <b>Weekly buy goal</b>
       <p id="goalNow"></p>
       <div class="goalin">
-        <div class="inp"><input id="goalInput" inputmode="numeric" pattern="[0-9]*" placeholder="20"><span style="font-size:15px">/ day</span></div>
+        <div class="inp"><input id="goalInput" inputmode="numeric" pattern="[0-9]*" placeholder="150"><span style="font-size:15px">/ week</span></div>
         <button class="b1" id="goalSave">Save</button>
       </div>
       <p>A change takes effect next Monday. Past weeks keep the goal they had.</p>
@@ -467,19 +467,23 @@ svg text{font-family:-apple-system,BlinkMacSystemFont,sans-serif}
   }
 
   /* ---------- Goals ---------- */
-  // settings: [{ effective: 'YYYY-MM-DD' (a Monday), daily: Number }]
-  function dailyGoalFor(mondayKey, settings) {
+  // settings rows from the sheet: [{ effective: 'YYYY-MM-DD' (a Monday), daily: Number }]
+  // The goal switched from "daily listing goal x 7" to a straight weekly buy goal
+  // starting WEEKLY_SINCE. Rows effective on/after that date hold the WEEKLY number
+  // (the sheet column is still named "daily"); rows before it are daily and get x 7.
+  var WEEKLY_SINCE = '2026-11-23', WEEKLY_START_GOAL = 150;
+  function weeklyGoalFor(mondayKey, settings) {
+    var list = (settings || []).map(function (s) {
+      return { effective: s.effective, weekly: s.effective >= WEEKLY_SINCE ? s.daily : s.daily * 7 };
+    });
+    if (!list.some(function (s) { return s.effective === WEEKLY_SINCE; })) list.push({ effective: WEEKLY_SINCE, weekly: WEEKLY_START_GOAL });
     var best = null;
-    (settings || []).forEach(function (s) {
+    list.forEach(function (s) {
       if (s.effective <= mondayKey && (!best || s.effective >= best.effective)) best = s;
     });
-    if (!best && settings && settings.length) {
-      // Week before any setting: use the earliest one.
-      best = settings.slice().sort(function (a, b) { return a.effective < b.effective ? -1 : 1; })[0];
-    }
-    return best ? best.daily : 20;
+    if (!best) best = list.slice().sort(function (a, b) { return a.effective < b.effective ? -1 : 1; })[0];
+    return best ? best.weekly : 140;
   }
-  function weeklyGoalFor(mondayKey, settings) { return dailyGoalFor(mondayKey, settings) * 7; }
 
   function weekSummary(rows, mondayKey, settings) {
     var s = sumRange(rows, mondayKey, addDays(mondayKey, 6));
@@ -701,7 +705,7 @@ svg text{font-family:-apple-system,BlinkMacSystemFont,sans-serif}
     TZ: TZ, SOURCES: SOURCES, WINDOWS: WINDOWS,
     easternDayKey: easternDayKey, addDays: addDays, daysBetween: daysBetween, mondayOf: mondayOf, nextMonday: nextMonday,
     sumRange: sumRange, windowRanges: windowRanges, compare: compare, tone: tone, kpis: kpis, sourceTable: sourceTable,
-    dailyGoalFor: dailyGoalFor, weeklyGoalFor: weeklyGoalFor, weekSummary: weekSummary, goalCard: goalCard,
+    weeklyGoalFor: weeklyGoalFor, weekSummary: weekSummary, goalCard: goalCard,
     weeklySeries: weeklySeries, normalize: normalize, wordsToDigits: wordsToDigits, parseHaul: parseHaul,
     money: money, int: int, prettyDay: prettyDay, firstDay: firstDay, round2: round2,
     presetRange: presetRange, orderRange: orderRange
@@ -1158,20 +1162,20 @@ var EXEC_URL = "https://script.google.com/macros/s/AKfycbxe5z4gvaG7xwTo9uQRM__yX
       b.onclick = function () { state.owner = b.getAttribute('data-b'); LS.set('sl_owner', state.owner); renderSettings(); };
     });
     var tk = todayKey(), mon = SL.mondayOf(tk), nxt = SL.nextMonday(tk);
-    var cur = SL.dailyGoalFor(mon, settings()), next = SL.dailyGoalFor(nxt, settings());
-    $('goalNow').innerHTML = 'This week: <b>' + cur + ' a day</b> (' + cur * 7 + ' a week).' +
-      (next !== cur ? ' Starting ' + SL.prettyDay(nxt) + ': <b>' + next + ' a day</b> (' + next * 7 + ' a week).' : '');
+    var cur = SL.weeklyGoalFor(mon, settings()), next = SL.weeklyGoalFor(nxt, settings());
+    $('goalNow').innerHTML = 'This week: <b>' + cur + ' items</b>.' +
+      (next !== cur ? ' Starting ' + SL.prettyDay(nxt) + ': <b>' + next + ' items a week</b>.' : '');
     $('goalInput').placeholder = String(next);
     var d = state.data;
     $('dataInfo').textContent = d ? ('Reading "' + d.sheetName + '": ' + d.hauls.length + ' hauls, ' + d.pending.length + ' pending.') : 'Not loaded yet.';
   }
   $('goalSave').onclick = function () {
     var v = parseInt(($('goalInput').value || '').replace(/[^0-9]/g, ''), 10);
-    if (!(v >= 1 && v <= 1000)) { toast('Enter a whole number of listings per day.', 'err'); return; }
+    if (!(v >= 1 && v <= 1000)) { toast('Enter a whole number of items per week.', 'err'); return; }
     var nxt = SL.nextMonday(todayKey());
-    if (!window.confirm('Change the daily listing goal to ' + v + ' a day (' + v * 7 + ' a week), starting Monday ' + SL.prettyDay(nxt) + '? Both phones will use it.')) return;
+    if (!window.confirm('Change the weekly buy goal to ' + v + ' items, starting Monday ' + SL.prettyDay(nxt) + '? Both phones will use it.')) return;
     call('api_setGoal', v, state.owner || '').then(function (r) {
-      toast('Goal set to ' + r.daily + ' a day from ' + SL.prettyDay(r.effective) + '.'); $('goalInput').value = ''; load();
+      toast('Goal set to ' + r.daily + ' a week from ' + SL.prettyDay(r.effective) + '.'); $('goalInput').value = ''; load();
     }).catch(function (e) { toast('Couldn\'t save the goal: ' + (e && e.message ? e.message : 'no connection') + '. Try again with signal.', 'err'); });
   };
 
