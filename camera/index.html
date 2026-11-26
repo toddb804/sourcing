@@ -125,6 +125,23 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;paddin
 .sheet-actions{display:flex;gap:8px;margin-top:12px}
 .sheet-actions .btn{flex:1;height:54px}
 .empty{color:var(--muted);padding:24px 0;text-align:center}
+
+/* full-screen review */
+#viewer{position:absolute;inset:0;background:#000;z-index:20;display:flex;flex-direction:column}
+#viewer[hidden]{display:none}
+.vtop{flex:none;display:flex;align-items:center;justify-content:space-between;padding:calc(var(--sat) + 10px) 16px 10px;font-weight:700;font-size:15px}
+.vtag{font-size:12px;font-weight:800;letter-spacing:.6px;border-radius:99px;padding:5px 10px;background:var(--orange);color:#fff}
+.vtag.ok{background:rgba(76,195,138,.16);color:var(--good)}
+#vstage{position:relative;flex:1;min-height:0;overflow:hidden;touch-action:none}
+#vimg{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;transform-origin:50% 50%;will-change:transform;-webkit-user-drag:none;pointer-events:none}
+#vimg.anim{transition:transform .2s ease-out}
+#vhint{position:absolute;left:0;right:0;bottom:12px;text-align:center;font-size:13px;color:var(--muted);pointer-events:none;transition:opacity .4s}
+#vzoom{position:absolute;top:10px;right:12px;font-size:12px;font-weight:800;background:rgba(14,14,16,.85);border-radius:99px;padding:4px 10px;display:none}
+.vbar{flex:none;display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:10px 14px calc(var(--sab) + 12px)}
+.vbar.lefty{direction:rtl}
+.vbar button{height:60px;border-radius:14px;background:var(--card);font-weight:800;font-size:15px;direction:ltr}
+.vbar .primary{background:var(--orange);color:#fff}
+.vbar .danger{color:var(--bad, #F2555A)}
 </style>
 </head>
 <body>
@@ -201,6 +218,17 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;paddin
         <button class="btn ghost" id="galClear">Clear</button>
         <button class="btn" id="galSave">Save all</button>
       </div>
+    </div>
+  </div>
+
+  <div id="viewer" hidden>
+    <div class="vtop"><span id="vcount" class="num">1 of 1</span><span class="vtag" id="vtag">Not saved</span></div>
+    <div id="vstage"><img id="vimg" alt=""><div id="vzoom" class="num"></div><div id="vhint">Double-tap or pinch to zoom · swipe for next</div></div>
+    <div class="vbar" id="vbar">
+      <button id="vClose">Close</button>
+      <button id="vDel" class="danger">Delete</button>
+      <button id="vAll">All</button>
+      <button id="vSave" class="primary">Save</button>
     </div>
   </div>
 </div>
@@ -713,7 +741,7 @@ function updThumb(){
   $('status').innerHTML = statusText();
 }
 $('shutter').onclick = capture;
-document.addEventListener('keydown', e => { if (e.key === ' ' || e.key === 'Enter' || e.key === 'AudioVolumeUp') { e.preventDefault(); capture(); } });
+document.addEventListener('keydown', e => { if (!$('viewer').hidden || !$('sheet').hidden) return; if (e.key === ' ' || e.key === 'Enter' || e.key === 'AudioVolumeUp') { e.preventDefault(); capture(); } });
 
 async function shareFiles(list){
   const files = list.map(s => new File([s.blob], s.name, {type:'image/jpeg'}));
@@ -723,7 +751,7 @@ async function shareFiles(list){
   }
   download(list); markSaved(list); return true;
 }
-function markSaved(list){ list.forEach(s => s.saved = true); updThumb(); if (!$('sheet').hidden) openSheet(); }
+function markSaved(list){ list.forEach(s => s.saved = true); updThumb(); if (!$('sheet').hidden) openSheet(); if (!$('viewer').hidden) showV(); }
 function download(list){
   list.forEach((s,i) => setTimeout(() => { const a = document.createElement('a'); a.href = s.url; a.download = s.name; document.body.appendChild(a); a.click(); a.remove(); }, i*250));
   return true;
@@ -731,13 +759,116 @@ function download(list){
 function openSheet(){
   const g = $('gal'); g.innerHTML = '';
   if (!shots.length) g.innerHTML = '<div class="empty" style="grid-column:1/-1">No photos yet.</div>';
-  shots.forEach(s => { const b = document.createElement('button'); b.style.backgroundImage = `url(${s.url})`; if (!s.saved) b.classList.add('unsaved'); b.onclick = () => shareFiles([s]); g.appendChild(b); });
+  shots.forEach(s => { const b = document.createElement('button'); b.style.backgroundImage = `url(${s.url})`; if (!s.saved) b.classList.add('unsaved'); b.onclick = () => { $('sheet').hidden = true; openViewer(shots.indexOf(s)); }; g.appendChild(b); });
   $('galTitle').textContent = shots.length ? `${shots.length} photo${shots.length>1?'s':''}` : 'Photos';
   const un = shots.filter(s => !s.saved).length;
   $('galSave').textContent = un ? `Save ${un} unsaved` : (shots.length > 1 ? `Save all ${shots.length} again` : 'Save again');
   $('sheet').hidden = false;
 }
-$('thumb').onclick = openSheet;
+$('thumb').onclick = () => shots.length ? openViewer(shots.length - 1) : toast('No photos yet.');
+
+/* ---------- full-screen review: zoom to check focus, swipe between shots ---------- */
+const vimg = $('vimg'), vstage = $('vstage');
+let vi = -1, Z = {s:1, tx:0, ty:0};
+function openViewer(i){
+  vi = Math.max(0, Math.min(shots.length - 1, i));
+  $('viewer').hidden = false; $('vbar').classList.toggle('lefty', !!S.lefty);
+  $('vhint').style.opacity = 1; setTimeout(() => $('vhint').style.opacity = 0, 2500);
+  showV();
+}
+function showV(){
+  const s = shots[vi]; if (!s) return closeViewer();
+  if (vimg.getAttribute('src') !== s.url) vimg.src = s.url;
+  setZ(1, 0, 0, false);
+  $('vcount').textContent = `${vi + 1} of ${shots.length}`;
+  $('vtag').textContent = s.saved ? 'Saved' : 'Not saved'; $('vtag').classList.toggle('ok', s.saved);
+  $('vSave').textContent = s.saved ? 'Save again' : 'Save';
+}
+function closeViewer(){ $('viewer').hidden = true; vi = -1; }
+function vbox(){                         // size of the photo as shown at 1x
+  const W = vstage.clientWidth, H = vstage.clientHeight, iw = vimg.naturalWidth || 1, ih = vimg.naturalHeight || 1;
+  const f = Math.min(W/iw, H/ih); return {W, H, w: iw*f, h: ih*f, full: 1/f};
+}
+function setZ(s, tx, ty, anim){
+  const b = vbox();
+  s = Math.min(Math.max(s, 1), Math.max(8, b.full));
+  const mx = Math.max(0, (b.w*s - b.W)/2), my = Math.max(0, (b.h*s - b.H)/2);
+  Z = {s, tx: s === 1 ? 0 : Math.max(-mx, Math.min(mx, tx)), ty: s === 1 ? 0 : Math.max(-my, Math.min(my, ty))};
+  vimg.classList.toggle('anim', !!anim);
+  vimg.style.transform = `translate(${Z.tx}px,${Z.ty}px) scale(${Z.s})`;
+  const z = $('vzoom'); z.style.display = Z.s > 1.01 ? 'block' : 'none'; z.textContent = Math.round(Z.s / b.full * 100) + '%';
+}
+function zoomAt(s2, px, py, anim){        // keep the point under the finger in place
+  const b = vbox(), cx = px - b.W/2, cy = py - b.H/2;
+  const qx = (cx - Z.tx)/Z.s, qy = (cy - Z.ty)/Z.s;
+  setZ(s2, cx - s2*qx, cy - s2*qy, anim);
+}
+const vp = new Map(); let g0 = null, lastTap = {t:0, x:0, y:0};
+function vloc(e){ const L = toLocal(e.clientX, e.clientY); return {x: L.x - vstage.offsetLeft, y: L.y - vstage.offsetTop}; }
+vstage.addEventListener('pointerdown', e => {
+  try{ vstage.setPointerCapture(e.pointerId); }catch(_){}
+  vp.set(e.pointerId, vloc(e));
+  const pts = [...vp.values()];
+  if (pts.length === 1) g0 = {x: pts[0].x, y: pts[0].y, tx: Z.tx, ty: Z.ty, t: Date.now(), moved: 0, pinch: false};
+  else if (pts.length === 2){
+    const [a, b] = pts, mx = (a.x + b.x)/2, my = (a.y + b.y)/2, B = vbox();
+    g0 = {pinch: true, d: Math.hypot(a.x - b.x, a.y - b.y) || 1, s: Z.s, qx: (mx - B.W/2 - Z.tx)/Z.s, qy: (my - B.H/2 - Z.ty)/Z.s, moved: 99};
+  }
+});
+vstage.addEventListener('pointermove', e => {
+  if (!vp.has(e.pointerId) || !g0) return;
+  vp.set(e.pointerId, vloc(e));
+  const pts = [...vp.values()];
+  if (pts.length >= 2 && g0.pinch){
+    const [a, b] = pts, mx = (a.x + b.x)/2, my = (a.y + b.y)/2, B = vbox();
+    const s2 = g0.s * Math.hypot(a.x - b.x, a.y - b.y) / g0.d;
+    setZ(s2, mx - B.W/2 - s2*g0.qx, my - B.H/2 - s2*g0.qy, false);
+  } else if (pts.length === 1 && !g0.pinch){
+    const dx = pts[0].x - g0.x, dy = pts[0].y - g0.y; g0.moved = Math.max(g0.moved, Math.hypot(dx, dy));
+    if (Z.s > 1.01) setZ(Z.s, g0.tx + dx, g0.ty + dy, false);
+    else { vimg.classList.remove('anim'); vimg.style.transform = `translate(${dx}px,0px)`; }
+  }
+});
+function vend(e){
+  if (!vp.has(e.pointerId)) return;
+  const p = vp.get(e.pointerId); vp.delete(e.pointerId);
+  if (vp.size > 0){ const q = [...vp.values()][0]; g0 = {x: q.x, y: q.y, tx: Z.tx, ty: Z.ty, t: Date.now(), moved: 99, pinch: false}; return; }
+  const g = g0; g0 = null; if (!g) return;
+  if (g.pinch){ if (Z.s < 1.05) setZ(1, 0, 0, true); return; }
+  const dx = p.x - g.x;
+  if (Z.s <= 1.01 && g.moved > 12){
+    if (dx < -60 && vi < shots.length - 1){ vi++; showV(); }
+    else if (dx > 60 && vi > 0){ vi--; showV(); }
+    else setZ(1, 0, 0, true);
+    return;
+  }
+  if (g.moved < 10 && Date.now() - g.t < 300){
+    const now = Date.now();
+    if (now - lastTap.t < 320 && Math.hypot(p.x - lastTap.x, p.y - lastTap.y) < 40){
+      if (Z.s > 1.01) setZ(1, 0, 0, true);
+      else zoomAt(Math.max(2.5, Math.min(8, vbox().full)), p.x, p.y, true);   // straight to full detail where you tapped
+      lastTap.t = 0;
+    } else lastTap = {t: now, x: p.x, y: p.y};
+  }
+}
+vstage.addEventListener('pointerup', vend); vstage.addEventListener('pointercancel', vend);
+vimg.addEventListener('load', () => setZ(1, 0, 0, false));
+$('vClose').onclick = closeViewer;
+$('vAll').onclick = () => { closeViewer(); openSheet(); };
+$('vSave').onclick = () => { const s = shots[vi]; if (s) shareFiles([s]).then(showV); };
+$('vDel').onclick = () => {
+  const s = shots[vi]; if (!s) return;
+  if (!s.saved && !confirm("This photo isn't saved to your Photos yet. Delete it?")) return;
+  shots.splice(vi, 1); URL.revokeObjectURL(s.url); updThumb();
+  if (!shots.length){ closeViewer(); toast('Deleted. No photos left.'); return; }
+  vi = Math.min(vi, shots.length - 1); showV();
+};
+document.addEventListener('keydown', e => {
+  if ($('viewer').hidden) return;
+  if (e.key === 'ArrowRight' && vi < shots.length - 1){ vi++; showV(); }
+  if (e.key === 'ArrowLeft' && vi > 0){ vi--; showV(); }
+  if (e.key === 'Escape') closeViewer();
+});
 $('galClose').onclick = () => $('sheet').hidden = true;
 $('sheet').onclick = e => { if (e.target.id === 'sheet') $('sheet').hidden = true; };
 $('galSave').onclick = () => { const u = shots.filter(s => !s.saved); shareFiles(u.length ? u : shots); };
