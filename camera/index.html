@@ -196,7 +196,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;paddin
           <button class="opt" id="bAF"><small>FOCUS</small><span id="vAF">Auto</span></button>
           <button class="opt" id="bEdit"><small>FIX A</small><span>Photo</span></button>
           <button class="opt" id="bHand"><small>HAND</small><span id="vHand">Right</span></button>
-          <button class="opt" id="bSound"><small>CLICK+BUZZ</small><span id="vSound">On</span></button>
+          <button class="opt" id="bSound"><small>BUZZ</small><span id="vSound">On</span></button>
         </div>
       </div>
     </div>
@@ -246,7 +246,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;paddin
 (function(){
 'use strict';
 /* ---------- version + self-update (iPhone home-screen apps hold on to old copies) ---------- */
-const APP_VERSION = 10;
+const APP_VERSION = 11;
 document.getElementById('verStart').textContent = 'Version ' + APP_VERSION;
 document.getElementById('verGal').textContent = '· v' + APP_VERSION;
 async function checkUpdate(){
@@ -756,23 +756,8 @@ function capture(){
   if (S.autosave) shareFiles([shot]).then(ok => { if (!ok) toast('Not saved. Tap the thumbnail to save it later.'); });
   else if (wasEdit) toast('Fixed photo added. Tap the thumbnail to save.');
 }
-/* ---------- capture feedback you can hear and feel ---------- */
-let actx = null, hapticLabel = null;
-function shutterSound(){
-  try{
-    if (navigator.audioSession) navigator.audioSession.type = 'playback';   // iOS 17+: play even with the ringer switch on silent
-    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
-    if (actx.state === 'suspended') actx.resume();
-    const t0 = actx.currentTime + 0.005;
-    [[0, 0.045, 0.55], [0.07, 0.03, 0.4]].forEach(([at, len, vol]) => {       // two-part "ka-chik"
-      const n = Math.floor(actx.sampleRate*len), buf = actx.createBuffer(1, n, actx.sampleRate), d = buf.getChannelData(0);
-      for (let i = 0; i < n; i++) d[i] = (Math.random()*2 - 1) * Math.pow(1 - i/n, 3);
-      const src = actx.createBufferSource(), hp = actx.createBiquadFilter(), g = actx.createGain();
-      src.buffer = buf; hp.type = 'highpass'; hp.frequency.value = 1800; g.gain.value = vol;
-      src.connect(hp).connect(g).connect(actx.destination); src.start(t0 + at);
-    });
-  }catch(e){}
-}
+/* ---------- capture feedback you can feel (no sound) ---------- */
+let hapticLabel = null;
 function haptic(){
   try{
     if (navigator.vibrate){ navigator.vibrate(35); return; }                // Android
@@ -785,7 +770,7 @@ function haptic(){
     hapticLabel.click();
   }catch(e){}
 }
-function shutterFeedback(){ if (S.sound){ shutterSound(); haptic(); } }
+function shutterFeedback(){ if (S.sound) haptic(); }
 let firedT;
 function confirmShot(){
   shutterFeedback();
