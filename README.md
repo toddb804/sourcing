@@ -5,7 +5,7 @@ It contains no business data and no keys: the data lives in a private Google She
 
 ## Listing Cam (`camera/`)
 
-Camera for listing photos: autofocus, a Kelvin white-balance dial with presets, gray-card color correction, a brightness dial, a grid and a square option.
+Camera for listing photos: autofocus, a Kelvin white-balance dial with presets, gray-card color correction, a brightness dial, a grid, and square photos by default (3:4 vertical under More).
 Built for one hand: every control sits in the bottom third, with a left-hand option. Photos are always vertical (3:4) and the screen never turns, whichever way the phone is held.
 The gray card sets color and brightness (card = middle gray). **Lock** watches a spot of background and undoes the phone's own brightness and color changes, so every item comes out the same.
 "Fix a photo" applies the same gray-card and Kelvin correction to a photo taken in another app.

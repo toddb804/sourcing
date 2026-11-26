@@ -216,10 +216,11 @@ const $ = id => document.getElementById(id);
 const video = $('video'), view = $('view'), stage = $('stage');
 
 /* ---------- settings (remembered on this phone) ---------- */
-const S = Object.assign({kelvin:null, gray:null, graySw:null, ev:0, grid:true, crop:'3:4', autosave:true, lefty:false}, (()=>{
+const S = Object.assign({kelvin:null, gray:null, graySw:null, ev:0, grid:true, crop:'1:1', autosave:true, lefty:false}, (()=>{
   try{ return JSON.parse(localStorage.getItem('listingcam') || '{}'); }catch(e){ return {}; }
 })());
 if (S.crop === '4:3') S.crop = '3:4';
+if ((S.v || 0) < 2){ S.crop = '1:1'; S.v = 2; }
 function save(){ try{ localStorage.setItem('listingcam', JSON.stringify(S)); }catch(e){} }
 
 /* ---------- color math (all in linear light) ---------- */
