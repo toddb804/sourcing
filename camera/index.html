@@ -106,7 +106,8 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;paddin
 .sheet-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
 .sheet-head b{font-size:18px}
 .gal{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;overflow-y:auto;min-height:0}
-.gal button{aspect-ratio:1;background:var(--card) center/cover no-repeat;border-radius:8px}
+.gal button{aspect-ratio:1;background:var(--card) center/cover no-repeat;border-radius:8px;position:relative}
+.gal button.unsaved::after{content:'Not saved';position:absolute;left:4px;bottom:4px;background:var(--orange);color:#fff;font-size:10px;font-weight:800;border-radius:6px;padding:2px 6px}
 .sheet-actions{display:flex;gap:8px;margin-top:12px}
 .sheet-actions .btn{flex:1}
 .empty{color:var(--muted);padding:24px 0;text-align:center}
@@ -117,6 +118,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;paddin
   <div class="top">
     <button id="bGrid" class="pill">Grid</button>
     <button id="bCrop" class="pill">4:3</button>
+    <button id="bAuto" class="pill">Auto-save</button>
     <span class="sp"></span>
     <span id="modeTag" class="tag"></span>
   </div>
@@ -196,7 +198,7 @@ const $ = id => document.getElementById(id);
 const video = $('video'), view = $('view'), stage = $('stage');
 
 /* ---------- settings (remembered on this phone) ---------- */
-const S = Object.assign({kelvin:null, gray:null, graySw:null, ev:0, grid:true, crop:'4:3'}, (()=>{
+const S = Object.assign({kelvin:null, gray:null, graySw:null, ev:0, grid:true, crop:'4:3', autosave:true}, (()=>{
   try{ return JSON.parse(localStorage.getItem('listingcam') || '{}'); }catch(e){ return {}; }
 })());
 function save(){ try{ localStorage.setItem('listingcam', JSON.stringify(S)); }catch(e){} }
@@ -498,6 +500,7 @@ $('evZero').onclick = () => { S.ev = 0; save(); refresh(); paintEV(); };
 $('grayPick').onclick = () => setPick(!picking);
 $('grayClear').onclick = () => { S.gray = null; S.graySw = null; save(); setPick(false); refresh(); };
 $('bGrid').onclick = () => { S.grid = !S.grid; save(); refresh(); };
+$('bAuto').onclick = () => { S.autosave = !S.autosave; save(); refresh(); toast(S.autosave ? 'Auto-save on: after each shot, tap Save Image.' : 'Auto-save off: photos collect in the thumbnail. Save them all at once from there.'); };
 $('bCrop').onclick = () => { S.crop = S.crop === '1:1' ? '4:3' : '1:1'; save(); refresh(); layout(); };
 
 function refresh(persist){
@@ -519,6 +522,7 @@ function refresh(persist){
   $('vAF').textContent = afLocked ? 'LOCKED' : 'AUTO';
   $('cAF').classList.toggle('active', afLocked);
   $('bGrid').classList.toggle('on', S.grid); $('grid').classList.toggle('show', S.grid);
+  $('bAuto').classList.toggle('on', !!S.autosave);
   $('bCrop').textContent = S.crop; $('bCrop').classList.toggle('on', S.crop === '1:1');
   $('modeTag').textContent = editSrc ? 'photo fix' : (stream ? (hwWB ? 'hardware WB' : 'color by app') : '');
   $('shutter').classList.toggle('save', !!editSrc);
@@ -534,23 +538,33 @@ function stamp(){
   const d = new Date(), p = n => String(n).padStart(2,'0');
   return `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
 }
-async function capture(){
+function capture(){
   if (!editSrc && (!stream || video.readyState < 2)) return;
   if (!draw(true)) return;
   const w = view.width, h = view.height, c = cropRect(w, h);
   out.width = Math.round(c.w); out.height = Math.round(c.h);
   octx.drawImage(view, c.x, c.y, c.w, c.h, 0, 0, out.width, out.height);
   const f = $('flash'); f.style.transition = 'none'; f.style.opacity = .8; void f.offsetWidth; f.style.transition = ''; f.style.opacity = 0;
-  const blob = await new Promise(r => out.toBlob(r, 'image/jpeg', 0.92));
+  // Built synchronously so the save sheet can open inside the shutter tap (iPhone only allows it there).
+  const blob = dataURLBlob(out.toDataURL('image/jpeg', 0.92));
   shotN++;
-  shots.push({blob, url:URL.createObjectURL(blob), name:`listing_${stamp()}_${shotN}.jpg`});
+  const shot = {blob, url:URL.createObjectURL(blob), name:`listing_${stamp()}_${shotN}.jpg`, saved:false};
+  shots.push(shot);
   updThumb();
-  if (editSrc){ toast('Fixed photo added. Tap the thumbnail to save.'); exitEdit(); }
+  const wasEdit = !!editSrc;
+  if (wasEdit) exitEdit();
+  if (S.autosave) shareFiles([shot]).then(ok => { if (!ok) toast('Not saved. Tap the thumbnail to save it later.'); });
+  else if (wasEdit) toast('Fixed photo added. Tap the thumbnail to save.');
+}
+function dataURLBlob(u){
+  const bin = atob(u.slice(u.indexOf(',')+1)), a = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i);
+  return new Blob([a], {type:'image/jpeg'});
 }
 function updThumb(){
-  const t = $('thumb'), last = shots[shots.length-1];
+  const t = $('thumb'), last = shots[shots.length-1], unsaved = shots.filter(s => !s.saved).length;
   t.style.backgroundImage = last ? `url(${last.url})` : '';
-  $('thumbN').textContent = shots.length; $('thumbN').style.display = shots.length ? 'grid' : 'none';
+  $('thumbN').textContent = unsaved; $('thumbN').style.display = unsaved ? 'grid' : 'none';
 }
 $('shutter').onclick = capture;
 document.addEventListener('keydown', e => { if (e.key === ' ' || e.key === 'Enter' || e.key === 'AudioVolumeUp') { e.preventDefault(); capture(); } });
@@ -558,10 +572,12 @@ document.addEventListener('keydown', e => { if (e.key === ' ' || e.key === 'Ente
 async function shareFiles(list){
   const files = list.map(s => new File([s.blob], s.name, {type:'image/jpeg'}));
   if (navigator.canShare && navigator.canShare({files})){
-    try{ await navigator.share({files}); return true; }catch(e){ return e.name === 'AbortError' ? false : download(list); }
+    try{ await navigator.share({files}); markSaved(list); return true; }
+    catch(e){ if (e.name === 'AbortError') return false; }
   }
-  return download(list);
+  download(list); markSaved(list); return true;
 }
+function markSaved(list){ list.forEach(s => s.saved = true); updThumb(); if (!$('sheet').hidden) openSheet(); }
 function download(list){
   list.forEach((s,i) => setTimeout(() => { const a = document.createElement('a'); a.href = s.url; a.download = s.name; document.body.appendChild(a); a.click(); a.remove(); }, i*250));
   return true;
@@ -569,17 +585,19 @@ function download(list){
 function openSheet(){
   const g = $('gal'); g.innerHTML = '';
   if (!shots.length) g.innerHTML = '<div class="empty" style="grid-column:1/-1">No photos yet.</div>';
-  shots.forEach(s => { const b = document.createElement('button'); b.style.backgroundImage = `url(${s.url})`; b.onclick = () => shareFiles([s]); g.appendChild(b); });
+  shots.forEach(s => { const b = document.createElement('button'); b.style.backgroundImage = `url(${s.url})`; if (!s.saved) b.classList.add('unsaved'); b.onclick = () => shareFiles([s]); g.appendChild(b); });
   $('galTitle').textContent = shots.length ? `${shots.length} photo${shots.length>1?'s':''}` : 'Photos';
-  $('galSave').textContent = shots.length > 1 ? `Save all ${shots.length}` : 'Save';
+  const un = shots.filter(s => !s.saved).length;
+  $('galSave').textContent = un ? `Save ${un} unsaved` : (shots.length > 1 ? `Save all ${shots.length} again` : 'Save again');
   $('sheet').hidden = false;
 }
 $('thumb').onclick = openSheet;
 $('galClose').onclick = () => $('sheet').hidden = true;
 $('sheet').onclick = e => { if (e.target.id === 'sheet') $('sheet').hidden = true; };
-$('galSave').onclick = () => shots.length && shareFiles(shots);
+$('galSave').onclick = () => { const u = shots.filter(s => !s.saved); shareFiles(u.length ? u : shots); };
 $('galClear').onclick = () => {
-  if (!shots.length || !confirm('Clear these photos from the app? Save them first if you need them.')) return;
+  if (!shots.length) return;
+  if (shots.some(s => !s.saved) && !confirm('Some photos are not saved to your Photos yet. Clear anyway?')) return;
   shots.splice(0).forEach(s => URL.revokeObjectURL(s.url)); updThumb(); openSheet();
 };
 
