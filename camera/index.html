@@ -42,7 +42,6 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;paddin
       transparent calc(66.666% - .5px),rgba(255,255,255,.35) calc(66.666% - .5px),rgba(255,255,255,.35) calc(66.666% + .5px),transparent calc(66.666% + .5px))}
 #grid.show{display:block}
 #gridBox{position:absolute}
-.mask{position:absolute;background:rgba(0,0,0,.6)}
 #reticle{position:absolute;width:76px;height:76px;margin:-38px 0 0 -38px;border:1.5px solid var(--orange-hi);border-radius:6px;
   opacity:0;transform:scale(1.25);transition:opacity .2s,transform .2s;pointer-events:none}
 #reticle.show{opacity:1;transform:scale(1)}
@@ -134,7 +133,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;paddin
 
   <div id="stage">
     <canvas id="view"></canvas>
-    <div id="overlay"><div id="gridBox"><div id="grid"></div></div><div class="mask" id="m1"></div><div class="mask" id="m2"></div><div id="anchor"></div></div>
+    <div id="overlay"><div id="gridBox"><div id="grid"></div></div><div id="anchor"></div></div>
     <div id="reticle"></div>
     <div id="flash"></div>
     <div id="pickHint">Tap the gray card</div>
@@ -293,8 +292,11 @@ function geometry(){
   const [w,h] = srcSize();
   let rot = 0;
   if (!editSrc && w > h){ const a = screenAngle(); if (a === 90 || a === 270) rot = a; }
-  let ow = rot ? h : w, oh = rot ? w : h, k = [1,1];
-  if (ow > oh*0.75 + 1){ const nw = Math.round(oh*0.75); const f = nw/ow; ow = nw; k = rot ? [1,f] : [f,1]; }
+  let ow = rot ? h : w, oh = rot ? w : h, kx = 1, ky = 1;
+  const aspect = S.crop === '1:1' ? 1 : 0.75;            // width / height of the saved photo
+  if (ow > oh*aspect + 1){ const nw = Math.round(oh*aspect); kx = nw/ow; ow = nw; }
+  else if (oh > ow/aspect + 1){ const nh = Math.round(ow/aspect); ky = nh/oh; oh = nh; }
+  const k = rot ? [ky, kx] : [kx, ky];
   return {rot, ow, oh, k};
 }
 function outToSrc(nx, ny){            // normalized output point -> normalized source point
@@ -333,19 +335,8 @@ function layout(){
   disp = {x:(sw-dw)/2, y:(sh2-dh)/2, w:dw, h:dh};
   Object.assign(view.style, {left:disp.x+'px', top:disp.y+'px', width:dw+'px', height:dh+'px'});
   const ov = $('overlay'); Object.assign(ov.style, {left:disp.x+'px', top:disp.y+'px', width:dw+'px', height:dh+'px'});
-  const c = cropRect(dw, dh), gb = $('gridBox');
-  Object.assign(gb.style, {left:c.x+'px', top:c.y+'px', width:c.w+'px', height:c.h+'px'});
-  const m1 = $('m1'), m2 = $('m2');
-  if (S.crop === '1:1'){
-    if (dw > dh + 1){ Object.assign(m1.style,{left:0,top:0,width:c.x+'px',height:dh+'px'}); Object.assign(m2.style,{left:(c.x+c.w)+'px',top:0,width:c.x+'px',height:dh+'px'}); }
-    else { Object.assign(m1.style,{left:0,top:0,width:dw+'px',height:c.y+'px'}); Object.assign(m2.style,{left:0,top:(c.y+c.h)+'px',width:dw+'px',height:c.y+'px'}); }
-    m1.style.display = m2.style.display = 'block';
-  } else m1.style.display = m2.style.display = 'none';
+  Object.assign($('gridBox').style, {left:0, top:0, width:dw+'px', height:dh+'px'});
   if (typeof placeAnchor === 'function' && lock) placeAnchor();
-}
-function cropRect(w,h){
-  if (S.crop !== '1:1') return {x:0,y:0,w,h};   // already 3:4 vertical
-  const s = Math.min(w,h); return {x:(w-s)/2, y:(h-s)/2, w:s, h:s};
 }
 let uiRot = 0;
 function orientUI(){
@@ -639,7 +630,11 @@ $('cLock').onclick = () => {
 $('bGrid').onclick = () => { S.grid = !S.grid; save(); refresh(); };
 $('bHand').onclick = () => { S.lefty = !S.lefty; save(); refresh(); };
 $('bAuto').onclick = () => { S.autosave = !S.autosave; save(); refresh(); toast(S.autosave ? 'Auto-save on: after each shot, tap Save Image.' : 'Auto-save off: photos collect in the thumbnail. Save them all at once from there.'); };
-$('bCrop').onclick = () => { S.crop = S.crop === '1:1' ? '3:4' : '1:1'; save(); refresh(); layout(); };
+$('bCrop').onclick = () => {
+  S.crop = S.crop === '1:1' ? '3:4' : '1:1'; save();
+  if (lock){ clearLock(); toast('Shape changed, so the lock was cleared. Tap Lock to set it again.'); }
+  refresh(); layout();
+};
 
 function statusText(){
   if (editSrc) return 'Fixing a photo. Tap <b>Gray Card</b> and then the card in it, or set <b>White Bal</b>. The orange button saves.';
@@ -692,9 +687,8 @@ function capture(){
   if (!editSrc && (!stream || video.readyState < 2)) return;
   if (lock && !editSrc) updateLock(0.7);
   if (!draw(true)) return;
-  const w = view.width, h = view.height, c = cropRect(w, h);
-  out.width = Math.round(c.w); out.height = Math.round(c.h);
-  octx.drawImage(view, c.x, c.y, c.w, c.h, 0, 0, out.width, out.height);
+  out.width = view.width; out.height = view.height;   // the preview already is exactly the photo
+  octx.drawImage(view, 0, 0);
   const f = $('flash'); f.style.transition = 'none'; f.style.opacity = .8; void f.offsetWidth; f.style.transition = ''; f.style.opacity = 0;
   // Built synchronously so the save sheet can open inside the shutter tap (iPhone only allows it there).
   const blob = dataURLBlob(out.toDataURL('image/jpeg', 0.92));
