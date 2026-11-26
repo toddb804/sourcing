@@ -23,16 +23,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;font-size:15px}
 button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;padding:0}
 .num{font-variant-numeric:tabular-nums}
-#app{height:100dvh;display:flex;flex-direction:column}
-
-/* top bar */
-.top{display:flex;align-items:center;gap:8px;padding:calc(env(safe-area-inset-top) + 8px) 16px 8px;background:var(--bg)}
-.top .sp{flex:1}
-.pill{height:32px;padding:0 11px;white-space:nowrap;border-radius:99px;background:var(--card);color:var(--muted);font-size:13px;font-weight:700;letter-spacing:.3px}
-.pill.on{color:var(--orange-hi);background:rgba(204,85,0,.16)}
-.top{gap:6px}
-@media (max-width:430px){.tag{display:none}}
-.tag{font-size:11px;font-weight:800;letter-spacing:1px;color:var(--faint);text-transform:uppercase}
+:root{--sat:env(safe-area-inset-top);--sab:env(safe-area-inset-bottom)}
+:root.rot90{--sat:env(safe-area-inset-left);--sab:env(safe-area-inset-right)}
+:root.rot270{--sat:env(safe-area-inset-right);--sab:env(safe-area-inset-left)}
+/* the app always lays out upright relative to the phone; JS sizes it and counter-rotates it if iOS turns the page */
+#app{position:fixed;left:0;top:0;width:100vw;height:100dvh;display:flex;flex-direction:column;transform-origin:0 0;background:var(--bg)}
+.topsafe{height:var(--sat);flex:none}
 
 /* stage */
 #stage{position:relative;flex:1;min-height:0;overflow:hidden;background:#000;touch-action:none}
@@ -68,66 +64,73 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;paddin
 .btn{height:48px;padding:0 22px;border-radius:14px;background:var(--orange);color:#fff;font-weight:800;font-size:16px}
 .btn.ghost{background:var(--card);color:var(--text)}
 
-/* controls */
-.controls{background:var(--panel);padding:10px 16px calc(env(safe-area-inset-bottom) + 10px)}
-.chips{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
-.ctl{background:var(--card);border-radius:12px;padding:7px 4px 8px;display:flex;flex-direction:column;align-items:center;gap:2px;border:1px solid transparent}
+/* controls: everything within thumb reach, fixed height so the preview never moves */
+.controls{flex:none;background:var(--panel);padding:8px 14px calc(var(--sab) + 8px)}
+.slot{position:relative;height:128px}
+.panel{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:flex-end;gap:8px}
+.panel[hidden]{display:none}
+#pNone{justify-content:center;align-items:center;text-align:center;padding:0 8px}
+#status{margin:0;font-size:14px;line-height:1.4;color:var(--muted)}
+#status b{color:var(--text)}
+.phead{display:flex;align-items:center;justify-content:space-between;font-size:13px;color:var(--muted)}
+.phead b{color:var(--text);font-size:22px;font-weight:800}
+.sbtn{height:40px;min-width:64px;padding:0 14px;border-radius:12px;background:var(--card);font-size:14px;font-weight:700;color:var(--text);white-space:nowrap}
+.sbtn.on{color:var(--orange-hi);background:rgba(204,85,0,.16)}
+.dial{position:relative;height:54px;flex:none;border-radius:14px;background:var(--card);overflow:hidden;touch-action:none;cursor:ew-resize}
+.dial .ticks{position:absolute;inset:0}
+.dial .needle{position:absolute;left:50%;top:5px;bottom:5px;width:3px;margin-left:-1.5px;background:var(--orange-hi);border-radius:2px}
+.dial .fade{position:absolute;inset:0;background:linear-gradient(to right,var(--card),transparent 22%,transparent 78%,var(--card));pointer-events:none}
+.presets{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;flex:none}
+.presets::-webkit-scrollbar{display:none}
+.presets button{flex:none;height:34px;padding:0 12px;border-radius:99px;background:var(--card2);font-size:13px;font-weight:700;color:var(--muted)}
+.gray-row{display:flex;gap:10px;align-items:center}
+.gray-row p{flex:1;margin:0;font-size:14px;color:var(--muted);line-height:1.35}
+.gray-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.gray-btns .sbtn{height:48px}
+.swatch{width:40px;height:40px;border-radius:10px;border:1px solid var(--line);flex:none}
+.opts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.opt{height:58px;border-radius:12px;background:var(--card);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:14px;font-weight:700}
+.opt small{font-size:10px;font-weight:800;letter-spacing:.8px;color:var(--faint)}
+.opt.on{color:var(--orange-hi);background:rgba(204,85,0,.16)}
+
+.chips{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px}
+.ctl{height:58px;background:var(--card);border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border:1.5px solid transparent}
 .ctl small{font-size:10px;font-weight:800;letter-spacing:1px;color:var(--faint)}
-.ctl b{font-size:15px;font-weight:800}
+.ctl b{font-size:16px;font-weight:800}
 .ctl.sel{border-color:var(--orange)}
 .ctl.active b{color:var(--orange-hi)}
 .ctl.set b{color:var(--good)}
+.ctl.warn b{color:var(--warn)}
 
-.panel{margin-top:10px}
-.panel[hidden]{display:none}
-.phead{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;font-size:13px;color:var(--muted)}
-.phead b{color:var(--text);font-size:20px;font-weight:800}
-.phead .sbtn{height:30px;padding:0 12px;border-radius:99px;background:var(--card);font-size:13px;font-weight:700;color:var(--text)}
-.dial{position:relative;height:46px;border-radius:12px;background:var(--card);overflow:hidden;touch-action:none;cursor:ew-resize}
-.dial .ticks{position:absolute;inset:0}
-.dial .needle{position:absolute;left:50%;top:4px;bottom:4px;width:3px;margin-left:-1.5px;background:var(--orange-hi);border-radius:2px}
-.dial .fade{position:absolute;inset:0;background:linear-gradient(to right,var(--card),transparent 22%,transparent 78%,var(--card));pointer-events:none}
-.presets{display:flex;gap:6px;margin-top:8px;overflow-x:auto;scrollbar-width:none}
-.presets::-webkit-scrollbar{display:none}
-.presets button{flex:none;height:30px;padding:0 10px;border-radius:99px;background:var(--card2);font-size:12px;font-weight:700;color:var(--muted)}
-.gray-row{display:flex;gap:8px;align-items:center}
-.gray-row p{flex:1;margin:0;font-size:13px;color:var(--muted);line-height:1.35}
-.swatch{width:34px;height:34px;border-radius:8px;border:1px solid var(--line);flex:none}
-
-.shutter-row{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;margin-top:12px}
-#thumb{width:52px;height:52px;border-radius:10px;background:var(--card) center/cover no-repeat;border:2px solid var(--line);position:relative}
-#thumb .n{position:absolute;right:-6px;top:-6px;min-width:20px;height:20px;border-radius:99px;background:var(--orange);color:#fff;font-size:11px;font-weight:800;display:none;place-items:center;padding:0 5px}
-#shutter{width:74px;height:74px;border-radius:50%;border:4px solid #fff;display:grid;place-items:center}
-#shutter i{width:58px;height:58px;border-radius:50%;background:#fff;transition:transform .1s}
+.shutter-row{display:flex;align-items:center;justify-content:space-between;margin-top:10px;padding:0 6px}
+.shutter-row.lefty{flex-direction:row-reverse}
+#thumb{width:60px;height:60px;border-radius:12px;background:var(--card) center/cover no-repeat;border:2px solid var(--line);position:relative}
+#thumb .n{position:absolute;right:-7px;top:-7px;min-width:22px;height:22px;border-radius:99px;background:var(--orange);color:#fff;font-size:12px;font-weight:800;display:none;place-items:center;padding:0 5px}
+#shutter{width:84px;height:84px;border-radius:50%;border:4px solid #fff;display:grid;place-items:center}
+#shutter i{width:66px;height:66px;border-radius:50%;background:#fff;transition:transform .1s}
 #shutter:active i{transform:scale(.9)}
 #shutter.save i{background:var(--orange)}
-.side-r{justify-self:end;display:flex;gap:8px}
-.sq{height:52px;min-width:52px;padding:0 10px;border-radius:12px;background:var(--card);font-size:12px;font-weight:700;color:var(--muted);display:grid;place-items:center;text-align:center;line-height:1.15}
+.sq{width:60px;height:60px;border-radius:12px;background:var(--card);font-size:13px;font-weight:700;color:var(--muted);display:grid;place-items:center;text-align:center;line-height:1.15}
+.sq.sel{color:var(--orange-hi);background:rgba(204,85,0,.16)}
 
 /* gallery sheet */
-#sheet{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;z-index:10}
+.pill{height:40px;padding:0 16px;white-space:nowrap;border-radius:99px;background:var(--card);color:var(--text);font-size:14px;font-weight:700}
+#sheet{position:absolute;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;z-index:10}
 #sheet[hidden]{display:none}
-.sheet-in{width:100%;max-height:85dvh;background:var(--panel);border-radius:18px 18px 0 0;padding:14px 16px calc(env(safe-area-inset-bottom) + 14px);display:flex;flex-direction:column}
+.sheet-in{width:100%;max-height:85%;background:var(--panel);border-radius:18px 18px 0 0;padding:14px 16px calc(var(--sab) + 14px);display:flex;flex-direction:column}
 .sheet-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
 .sheet-head b{font-size:18px}
 .gal{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;overflow-y:auto;min-height:0}
 .gal button{aspect-ratio:1;background:var(--card) center/cover no-repeat;border-radius:8px;position:relative}
 .gal button.unsaved::after{content:'Not saved';position:absolute;left:4px;bottom:4px;background:var(--orange);color:#fff;font-size:10px;font-weight:800;border-radius:6px;padding:2px 6px}
 .sheet-actions{display:flex;gap:8px;margin-top:12px}
-.sheet-actions .btn{flex:1}
+.sheet-actions .btn{flex:1;height:54px}
 .empty{color:var(--muted);padding:24px 0;text-align:center}
 </style>
 </head>
 <body>
 <div id="app">
-  <div class="top">
-    <button id="bGrid" class="pill">Grid</button>
-    <button id="bCrop" class="pill">4:3</button>
-    <button id="bAuto" class="pill">Auto-save</button>
-    <button id="bLock" class="pill">Lock</button>
-    <span class="sp"></span>
-    <span id="modeTag" class="tag"></span>
-  </div>
+  <div class="topsafe"></div>
 
   <div id="stage">
     <canvas id="view"></canvas>
@@ -145,51 +148,60 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;paddin
   </div>
 
   <div class="controls">
+    <div class="slot">
+      <div class="panel" id="pNone"><p id="status"></p></div>
+
+      <div class="panel" id="pWB" hidden>
+        <div class="phead"><span>Kelvin <span id="wbHow"></span></span><b id="wbVal" class="num">AUTO</b><button class="sbtn" id="wbAuto">Auto</button></div>
+        <div class="dial" id="dWB"><canvas class="ticks"></canvas><i class="fade"></i><i class="needle"></i></div>
+        <div class="presets" id="wbPresets"></div>
+      </div>
+
+      <div class="panel" id="pEV" hidden>
+        <div class="phead"><span>Brightness (stops)</span><b id="evVal" class="num">0.0</b><button class="sbtn" id="evZero">Reset</button></div>
+        <div class="dial" id="dEV"><canvas class="ticks"></canvas><i class="fade"></i><i class="needle"></i></div>
+      </div>
+
+      <div class="panel" id="pGray" hidden>
+        <div class="gray-row"><div class="swatch" id="graySw"></div><p id="grayTxt"></p></div>
+        <div class="gray-btns"><button class="sbtn" id="grayPick">Tap card</button><button class="sbtn" id="grayClear">Clear</button></div>
+      </div>
+
+      <div class="panel" id="pMore" hidden>
+        <div class="opts">
+          <button class="opt" id="bGrid"><small>GRID</small><span id="vGrid">On</span></button>
+          <button class="opt" id="bCrop"><small>SHAPE</small><span id="vCrop">3:4</span></button>
+          <button class="opt" id="bAuto"><small>AUTO-SAVE</small><span id="vAuto">On</span></button>
+          <button class="opt" id="bAF"><small>FOCUS</small><span id="vAF">Auto</span></button>
+          <button class="opt" id="bEdit"><small>FIX A</small><span>Photo</span></button>
+          <button class="opt" id="bHand"><small>HAND</small><span id="vHand">Right</span></button>
+        </div>
+      </div>
+    </div>
+
     <div class="chips">
-      <button class="ctl" id="cAF"><small>FOCUS</small><b id="vAF">AUTO</b></button>
       <button class="ctl" id="cWB"><small>WHITE BAL</small><b id="vWB" class="num">AUTO</b></button>
       <button class="ctl" id="cGray"><small>GRAY CARD</small><b id="vGray">OFF</b></button>
       <button class="ctl" id="cEV"><small>BRIGHT</small><b id="vEV" class="num">0.0</b></button>
+      <button class="ctl" id="cLock"><small>LOCK</small><b id="vLock">OFF</b></button>
     </div>
 
-    <div class="panel" id="pWB" hidden>
-      <div class="phead"><span>Kelvin <span id="wbHow"></span></span><b id="wbVal" class="num">AUTO</b><button class="sbtn" id="wbAuto">Auto</button></div>
-      <div class="dial" id="dWB"><canvas class="ticks"></canvas><i class="fade"></i><i class="needle"></i></div>
-      <div class="presets" id="wbPresets"></div>
-    </div>
-
-    <div class="panel" id="pEV" hidden>
-      <div class="phead"><span>Brightness (stops)</span><b id="evVal" class="num">0.0</b><button class="sbtn" id="evZero">Reset</button></div>
-      <div class="dial" id="dEV"><canvas class="ticks"></canvas><i class="fade"></i><i class="needle"></i></div>
-    </div>
-
-    <div class="panel" id="pGray" hidden>
-      <div class="gray-row">
-        <div class="swatch" id="graySw"></div>
-        <p id="grayTxt">Put a gray card in the light you're shooting in, then tap it on screen.</p>
-        <button class="sbtn pill" id="grayPick">Tap card</button>
-        <button class="sbtn pill" id="grayClear">Clear</button>
-      </div>
-    </div>
-
-    <div class="shutter-row">
+    <div class="shutter-row" id="srow">
       <button id="thumb" aria-label="Photos"><span class="n" id="thumbN"></span></button>
       <button id="shutter" aria-label="Take photo"><i></i></button>
-      <div class="side-r">
-        <button class="sq" id="bEdit">Fix a<br>photo</button>
-        <button class="sq" id="bDone" style="display:none">Back to<br>camera</button>
-      </div>
+      <button class="sq" id="bMore">More</button>
+      <button class="sq" id="bDone" style="display:none">Back to<br>camera</button>
     </div>
   </div>
-</div>
 
-<div id="sheet" hidden>
-  <div class="sheet-in">
-    <div class="sheet-head"><b id="galTitle">Photos</b><button class="pill" id="galClose">Close</button></div>
-    <div class="gal" id="gal"></div>
-    <div class="sheet-actions">
-      <button class="btn ghost" id="galClear">Clear</button>
-      <button class="btn" id="galSave">Save all</button>
+  <div id="sheet" hidden>
+    <div class="sheet-in">
+      <div class="sheet-head"><b id="galTitle">Photos</b><button class="pill" id="galClose">Close</button></div>
+      <div class="gal" id="gal"></div>
+      <div class="sheet-actions">
+        <button class="btn ghost" id="galClear">Clear</button>
+        <button class="btn" id="galSave">Save all</button>
+      </div>
     </div>
   </div>
 </div>
@@ -204,9 +216,10 @@ const $ = id => document.getElementById(id);
 const video = $('video'), view = $('view'), stage = $('stage');
 
 /* ---------- settings (remembered on this phone) ---------- */
-const S = Object.assign({kelvin:null, gray:null, graySw:null, ev:0, grid:true, crop:'4:3', autosave:true}, (()=>{
+const S = Object.assign({kelvin:null, gray:null, graySw:null, ev:0, grid:true, crop:'3:4', autosave:true, lefty:false}, (()=>{
   try{ return JSON.parse(localStorage.getItem('listingcam') || '{}'); }catch(e){ return {}; }
 })());
+if (S.crop === '4:3') S.crop = '3:4';
 function save(){ try{ localStorage.setItem('listingcam', JSON.stringify(S)); }catch(e){} }
 
 /* ---------- color math (all in linear light) ---------- */
@@ -249,7 +262,7 @@ const hp = gl.getShaderPrecisionFormat(gl.FRAGMENT_SHADER, gl.HIGH_FLOAT).precis
 function sh(type, src){ const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); return s; }
 const prog = gl.createProgram();
 gl.attachShader(prog, sh(gl.VERTEX_SHADER,
-  'attribute vec2 p;varying vec2 uv;void main(){uv=vec2(p.x*.5+.5,.5-p.y*.5);gl_Position=vec4(p,0.,1.);}'));
+  'attribute vec2 p;uniform mat2 R;uniform vec2 K;varying vec2 uv;void main(){vec2 q=(R*p)*K;uv=vec2(q.x*.5+.5,.5-q.y*.5);gl_Position=vec4(p,0.,1.);}'));
 gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, `precision ${hp} float;
   uniform sampler2D t; uniform vec3 g; varying vec2 uv;
   vec3 toLin(vec3 c){return mix(c/12.92,pow((c+.055)/1.055,vec3(2.4)),step(.04045,c));}
@@ -261,18 +274,41 @@ gl.linkProgram(prog); gl.useProgram(prog);
 const buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf);
 gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
 const aP = gl.getAttribLocation(prog,'p'); gl.enableVertexAttribArray(aP); gl.vertexAttribPointer(aP,2,gl.FLOAT,false,0,0);
-const uG = gl.getUniformLocation(prog,'g');
+const uG = gl.getUniformLocation(prog,'g'), uR = gl.getUniformLocation(prog,'R'), uK = gl.getUniformLocation(prog,'K');
 const tex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, tex);
 [gl.TEXTURE_WRAP_S, gl.TEXTURE_WRAP_T].forEach(p => gl.texParameteri(gl.TEXTURE_2D, p, gl.CLAMP_TO_EDGE));
 [gl.TEXTURE_MIN_FILTER, gl.TEXTURE_MAG_FILTER].forEach(p => gl.texParameteri(gl.TEXTURE_2D, p, gl.LINEAR));
 
 function srcSize(){ return editSrc ? [editSrc.width, editSrc.height] : [video.videoWidth, video.videoHeight]; }
+/* Photos are always vertical, as if the phone were upright.
+   If iOS hands over a sideways frame (page rotated), turn it back; anything still wider than 3:4 is cropped to 3:4. */
+function screenAngle(){
+  if (typeof window.orientation === 'number') return (window.orientation + 360) % 360;   // iOS
+  return (screen.orientation && screen.orientation.angle) || 0;
+}
+const ROT = {0:[1,0,0,1], 90:[0,1,-1,0], 270:[0,-1,1,0]};   // column-major mat2: output -> source
+let geo = {rot:0, ow:0, oh:0, k:[1,1]};
+function geometry(){
+  const [w,h] = srcSize();
+  let rot = 0;
+  if (!editSrc && w > h){ const a = screenAngle(); if (a === 90 || a === 270) rot = a; }
+  let ow = rot ? h : w, oh = rot ? w : h, k = [1,1];
+  if (ow > oh*0.75 + 1){ const nw = Math.round(oh*0.75); const f = nw/ow; ow = nw; k = rot ? [1,f] : [f,1]; }
+  return {rot, ow, oh, k};
+}
+function outToSrc(nx, ny){            // normalized output point -> normalized source point
+  const m = ROT[geo.rot], px = 2*nx - 1, py = 1 - 2*ny;
+  const qx = (m[0]*px + m[2]*py)*geo.k[0], qy = (m[1]*px + m[3]*py)*geo.k[1];
+  return [(qx + 1)/2, (1 - qy)/2];
+}
 function draw(upload){
   const src = editSrc || video, [w,h] = srcSize();
   if (!w || !h) return false;
-  if (view.width !== w || view.height !== h){ view.width = w; view.height = h; layout(); }
+  geo = geometry();
+  if (view.width !== geo.ow || view.height !== geo.oh){ view.width = geo.ow; view.height = geo.oh; layout(); }
   if (upload) gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, src);
-  gl.viewport(0,0,w,h);
+  gl.viewport(0,0,geo.ow,geo.oh);
+  gl.uniformMatrix2fv(uR, false, ROT[geo.rot]); gl.uniform2fv(uK, geo.k);
   gl.uniform3fv(uG, currentGains());
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   return true;
@@ -300,17 +336,36 @@ function layout(){
   Object.assign(gb.style, {left:c.x+'px', top:c.y+'px', width:c.w+'px', height:c.h+'px'});
   const m1 = $('m1'), m2 = $('m2');
   if (S.crop === '1:1'){
-    if (dw > dh){ Object.assign(m1.style,{left:0,top:0,width:c.x+'px',height:dh+'px'}); Object.assign(m2.style,{left:(c.x+c.w)+'px',top:0,width:c.x+'px',height:dh+'px'}); }
+    if (dw > dh + 1){ Object.assign(m1.style,{left:0,top:0,width:c.x+'px',height:dh+'px'}); Object.assign(m2.style,{left:(c.x+c.w)+'px',top:0,width:c.x+'px',height:dh+'px'}); }
     else { Object.assign(m1.style,{left:0,top:0,width:dw+'px',height:c.y+'px'}); Object.assign(m2.style,{left:0,top:(c.y+c.h)+'px',width:dw+'px',height:c.y+'px'}); }
     m1.style.display = m2.style.display = 'block';
   } else m1.style.display = m2.style.display = 'none';
   if (typeof placeAnchor === 'function' && lock) placeAnchor();
 }
 function cropRect(w,h){
-  if (S.crop !== '1:1') return {x:0,y:0,w,h};
+  if (S.crop !== '1:1') return {x:0,y:0,w,h};   // already 3:4 vertical
   const s = Math.min(w,h); return {x:(w-s)/2, y:(h-s)/2, w:s, h:s};
 }
-window.addEventListener('resize', () => setTimeout(layout, 50));
+let uiRot = 0;
+function orientUI(){
+  const W = window.innerWidth, H = window.innerHeight, a = screenAngle(), app = $('app');
+  uiRot = (W > H && (a === 90 || a === 270)) ? a : 0;
+  document.documentElement.classList.toggle('rot90', uiRot === 90);
+  document.documentElement.classList.toggle('rot270', uiRot === 270);
+  if (uiRot === 90)      Object.assign(app.style, {width:H+'px', height:W+'px', transform:`translate(0px,${H}px) rotate(-90deg)`});
+  else if (uiRot === 270) Object.assign(app.style, {width:H+'px', height:W+'px', transform:`translate(${W}px,0px) rotate(90deg)`});
+  else                    Object.assign(app.style, {width:W+'px', height:H+'px', transform:''});
+  setTimeout(layout, 30);
+}
+function toLocal(X, Y){               // screen point -> point inside the upright app
+  const W = window.innerWidth, H = window.innerHeight;
+  if (uiRot === 90) return {x:H - Y, y:X};
+  if (uiRot === 270) return {x:Y, y:W - X};
+  return {x:X, y:Y};
+}
+['resize','orientationchange'].forEach(ev => window.addEventListener(ev, () => { orientUI(); setTimeout(orientUI, 300); }));
+if (screen.orientation && screen.orientation.addEventListener) screen.orientation.addEventListener('change', () => setTimeout(orientUI, 50));
+if (screen.orientation && screen.orientation.lock) screen.orientation.lock('portrait').catch(()=>{});
 
 /* ---------- camera ---------- */
 async function startCam(){
@@ -363,7 +418,7 @@ async function focusAt(nx, ny, cx, cy){
     return;
   }
   const o = {};
-  if (hwPOI) o.pointsOfInterest = [{x:nx, y:ny}];
+  if (hwPOI){ const [ux, uy] = outToSrc(nx, ny); o.pointsOfInterest = [{x:ux, y:uy}]; }
   o.focusMode = afLocked && hwFocusModes.includes('single-shot') ? 'single-shot'
               : hwFocusModes.includes('continuous') ? 'continuous' : 'single-shot';
   await applyAdv(o);
@@ -387,7 +442,8 @@ function measure(nx, ny, frac){
   const src = editSrc || video, [w,h] = srcSize();
   if (!w || !h) return null;
   const r = Math.max(6, Math.round(Math.min(w,h)*frac));
-  const sx = Math.max(0, Math.min(w-2*r, Math.round(nx*w)-r)), sy = Math.max(0, Math.min(h-2*r, Math.round(ny*h)-r));
+  const [ux, uy] = outToSrc(nx, ny);
+  const sx = Math.max(0, Math.min(w-2*r, Math.round(ux*w)-r)), sy = Math.max(0, Math.min(h-2*r, Math.round(uy*h)-r));
   const n = Math.min(32, 2*r);
   sCan.width = sCan.height = n;
   sCtx.drawImage(src, sx, sy, 2*r, 2*r, 0, 0, n, n);
@@ -430,7 +486,7 @@ function updateLock(alpha){
 }
 function setLockOk(ok){
   if (lock.ok === ok) return;
-  lock.ok = ok; $('anchor').classList.toggle('bad', !ok);
+  lock.ok = ok; $('anchor').classList.toggle('bad', !ok); refresh(false);
   if (!ok) toast("Lock spot is covered. Keep that spot of background clear, or tap Lock to set a new one.");
 }
 function setLock(nx, ny, cx, cy){
@@ -484,10 +540,9 @@ function setPick(mode){
 /* ---------- stage taps ---------- */
 stage.addEventListener('click', e => {
   if ($('start').style.display !== 'none') return;
-  const r = view.getBoundingClientRect();
-  const nx = (e.clientX - r.left)/r.width, ny = (e.clientY - r.top)/r.height;
+  const L = toLocal(e.clientX, e.clientY), cx = L.x - stage.offsetLeft, cy = L.y - stage.offsetTop;
+  const nx = (cx - disp.x)/disp.w, ny = (cy - disp.y)/disp.h;
   if (nx<0||nx>1||ny<0||ny>1) return;
-  const sr = stage.getBoundingClientRect(), cx = e.clientX - sr.left, cy = e.clientY - sr.top;
   if (picking === 'gray') grayTap(nx, ny, cx, cy); else if (picking === 'anchor') setLock(nx, ny, cx, cy); else focusAt(nx, ny, cx, cy);
 });
 let retT;
@@ -522,10 +577,10 @@ function makeDial(el, cfg){
     }
   }
   let sx = 0, sv = 0, drag = false;
-  el.addEventListener('pointerdown', e => { drag = true; sx = e.clientX; sv = cfg.get(); el.setPointerCapture(e.pointerId); cfg.begin && cfg.begin(); });
+  el.addEventListener('pointerdown', e => { drag = true; sx = toLocal(e.clientX, e.clientY).x; sv = cfg.get(); el.setPointerCapture(e.pointerId); cfg.begin && cfg.begin(); });
   el.addEventListener('pointermove', e => {
     if (!drag) return;
-    let v = sv - (e.clientX - sx)/cfg.px*cfg.step;
+    let v = sv - (toLocal(e.clientX, e.clientY).x - sx)/cfg.px*cfg.step;
     v = Math.round(v/cfg.step)*cfg.step; v = Math.min(cfg.max, Math.max(cfg.min, +v.toFixed(2)));
     if (v !== cfg.get()){ cfg.set(v); paint(); }
   });
@@ -557,21 +612,23 @@ let panel = null;
 function openPanel(p){
   panel = panel === p ? null : p;
   ['WB','EV','Gray'].forEach(k => { $('p'+k).hidden = panel !== k; $('c'+k).classList.toggle('sel', panel === k); });
+  $('pMore').hidden = panel !== 'More'; $('bMore').classList.toggle('sel', panel === 'More');
+  $('pNone').hidden = !!panel;
   if (panel === 'WB') paintWB();
   if (panel === 'EV') paintEV();
   if (panel === 'Gray' && !S.gray) setPick('gray');
   if (panel !== 'Gray' && picking === 'gray') setPick(null);
-  setTimeout(layout, 0);
 }
 $('cWB').onclick = () => openPanel('WB');
 $('cEV').onclick = () => openPanel('EV');
 $('cGray').onclick = () => openPanel('Gray');
-$('cAF').onclick = toggleAFLock;
+$('bAF').onclick = toggleAFLock;
+$('bMore').onclick = () => openPanel('More');
 $('wbAuto').onclick = () => { setKelvin(null); paintWB(); };
 $('evZero').onclick = () => { S.ev = 0; save(); refresh(); paintEV(); };
 $('grayPick').onclick = () => setPick(picking === 'gray' ? null : 'gray');
 $('grayClear').onclick = () => { S.gray = null; S.grayExp = null; S.graySw = null; save(); setPick(null); refresh(); };
-$('bLock').onclick = () => {
+$('cLock').onclick = () => {
   if (picking === 'anchor'){ setPick(null); return; }
   if (lock){ clearLock(); toast('Unlocked. The camera adjusts on its own again.'); return; }
   if (editSrc){ toast('Lock is for the live camera.'); return; }
@@ -579,16 +636,26 @@ $('bLock').onclick = () => {
   setPick('anchor'); toast('Tap a spot of background that stays visible in every shot, like a corner of the backdrop.');
 };
 $('bGrid').onclick = () => { S.grid = !S.grid; save(); refresh(); };
+$('bHand').onclick = () => { S.lefty = !S.lefty; save(); refresh(); };
 $('bAuto').onclick = () => { S.autosave = !S.autosave; save(); refresh(); toast(S.autosave ? 'Auto-save on: after each shot, tap Save Image.' : 'Auto-save off: photos collect in the thumbnail. Save them all at once from there.'); };
-$('bCrop').onclick = () => { S.crop = S.crop === '1:1' ? '4:3' : '1:1'; save(); refresh(); layout(); };
+$('bCrop').onclick = () => { S.crop = S.crop === '1:1' ? '3:4' : '1:1'; save(); refresh(); layout(); };
 
+function statusText(){
+  if (editSrc) return 'Fixing a photo. Tap <b>Gray Card</b> and then the card in it, or set <b>White Bal</b>. The orange button saves.';
+  if (!stream) return '';
+  if (!S.gray) return 'To start, put a gray card in your light, tap <b>Gray Card</b>, then tap the card.';
+  if (!lock) return 'Card set. Tap <b>Lock</b>, then a spot of backdrop, so every item comes out the same.';
+  if (!lock.ok) return 'The lock spot is covered. Clear it, or tap <b>Lock</b> twice to pick a new spot.';
+  const un = shots.filter(s => !s.saved).length;
+  return 'Ready. Color and brightness are locked.' + (un ? ` <b>${un}</b> photo${un>1?'s':''} not saved yet.` : '');
+}
 function refresh(persist){
   if (persist !== false) save();
   const sw = !hwWB || editSrc;
   $('vWB').textContent = S.kelvin ? S.kelvin+'K' : (S.gray ? 'CARD' : 'AUTO');
   $('cWB').classList.toggle('active', !!S.kelvin);
   $('wbVal').textContent = S.kelvin ? S.kelvin+'K' : 'AUTO';
-  $('wbHow').textContent = S.gray ? '(fine-tune on top of the card)' : (sw ? '' : '(camera hardware)');
+  $('wbHow').textContent = S.gray ? '(fine-tune)' : (sw ? '' : '(camera)');
   $('vGray').textContent = S.gray ? 'SET' : 'OFF';
   $('cGray').classList.toggle('set', !!S.gray);
   $('graySw').style.background = S.graySw ? `rgb(${S.graySw.join(',')})` : 'transparent';
@@ -598,16 +665,17 @@ function refresh(persist){
   $('vEV').textContent = (S.ev>0?'+':'') + S.ev.toFixed(1);
   $('cEV').classList.toggle('active', S.ev !== 0);
   $('evVal').textContent = (S.ev>0?'+':'') + S.ev.toFixed(1);
-  $('vAF').textContent = afLocked ? 'LOCKED' : 'AUTO';
-  $('cAF').classList.toggle('active', afLocked);
-  $('bGrid').classList.toggle('on', S.grid); $('grid').classList.toggle('show', S.grid);
-  $('bAuto').classList.toggle('on', !!S.autosave);
-  $('bLock').textContent = picking === 'anchor' ? 'Skip lock' : (lock ? 'Locked' : 'Lock');
-  $('bLock').classList.toggle('on', !!lock || picking === 'anchor');
-  $('bCrop').textContent = S.crop; $('bCrop').classList.toggle('on', S.crop === '1:1');
-  $('modeTag').textContent = editSrc ? 'photo fix' : (stream ? (hwWB ? 'hardware WB' : 'color by app') : '');
+  $('vAF').textContent = afLocked ? 'Locked' : 'Auto'; $('bAF').classList.toggle('on', afLocked);
+  $('vGrid').textContent = S.grid ? 'On' : 'Off'; $('bGrid').classList.toggle('on', S.grid); $('grid').classList.toggle('show', S.grid);
+  $('vAuto').textContent = S.autosave ? 'On' : 'Off'; $('bAuto').classList.toggle('on', !!S.autosave);
+  $('vCrop').textContent = S.crop === '1:1' ? 'Square' : '3:4'; $('bCrop').classList.toggle('on', S.crop === '1:1');
+  $('vHand').textContent = S.lefty ? 'Left' : 'Right'; $('srow').classList.toggle('lefty', !!S.lefty);
+  $('vLock').textContent = picking === 'anchor' ? 'SKIP' : (lock ? (lock.ok ? 'ON' : 'COVERED') : 'OFF');
+  $('cLock').classList.toggle('set', !!lock && lock.ok); $('cLock').classList.toggle('warn', !!lock && !lock.ok);
+  $('cLock').classList.toggle('active', picking === 'anchor');
+  $('status').innerHTML = statusText();
   $('shutter').classList.toggle('save', !!editSrc);
-  $('bEdit').style.display = editSrc ? 'none' : ''; $('bDone').style.display = editSrc ? '' : 'none';
+  $('bMore').style.display = editSrc ? 'none' : ''; $('bDone').style.display = editSrc ? '' : 'none';
   texDirty = true;
 }
 
@@ -647,6 +715,7 @@ function updThumb(){
   const t = $('thumb'), last = shots[shots.length-1], unsaved = shots.filter(s => !s.saved).length;
   t.style.backgroundImage = last ? `url(${last.url})` : '';
   $('thumbN').textContent = unsaved; $('thumbN').style.display = unsaved ? 'grid' : 'none';
+  $('status').innerHTML = statusText();
 }
 $('shutter').onclick = capture;
 document.addEventListener('keydown', e => { if (e.key === ' ' || e.key === 'Enter' || e.key === 'AudioVolumeUp') { e.preventDefault(); capture(); } });
@@ -684,7 +753,7 @@ $('galClear').onclick = () => {
 };
 
 /* ---------- fix an existing photo (e.g. one from Pro Camera) ---------- */
-$('bEdit').onclick = () => $('file').click();
+$('bEdit').onclick = () => { openPanel(null); $('file').click(); };
 $('bDone').onclick = exitEdit;
 $('file').onchange = async e => {
   const f = e.target.files[0]; e.target.value = '';
@@ -711,7 +780,7 @@ function exitEdit(){
 
 /* ---------- go ---------- */
 $('bStart').onclick = startCam;
-refresh(); layout(); requestAnimationFrame(loop);
+orientUI(); refresh(); layout(); requestAnimationFrame(loop);
 if (navigator.permissions && navigator.permissions.query){
   navigator.permissions.query({name:'camera'}).then(p => { if (p.state === 'granted') startCam(); }).catch(()=>{});
 }
