@@ -242,20 +242,21 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;paddin
 (function(){
 'use strict';
 /* ---------- version + self-update (iPhone home-screen apps hold on to old copies) ---------- */
-const APP_VERSION = 8;
+const APP_VERSION = 9;
 document.getElementById('verStart').textContent = 'Version ' + APP_VERSION;
 document.getElementById('verGal').textContent = '· v' + APP_VERSION;
 async function checkUpdate(){
   try{
     const r = await fetch('./index.html?check=' + Date.now(), {cache:'no-store'});
     const m = (await r.text()).match(/const APP_VERSION = (\d+);/);
-    if (!m || +m[1] <= APP_VERSION) return;
+    if (!m || +m[1] <= APP_VERSION) return false;
     const key = 'listingcam-reloaded-' + m[1];
-    if (sessionStorage.getItem(key)) return;          // tried once already this session; don't loop
+    if (sessionStorage.getItem(key)) return false;    // tried once already this session; don't loop
     sessionStorage.setItem(key, '1');
     await Promise.all(['./', './index.html'].map(u => fetch(u, {cache:'reload'}).catch(()=>{})));
     location.replace('./?v=' + m[1]);
-  }catch(e){}
+    return true;
+  }catch(e){ return false; }
 }
 const $ = id => document.getElementById(id);
 const video = $('video'), view = $('view'), stage = $('stage');
@@ -433,7 +434,7 @@ async function startCam(){
 }
 async function applyAdv(o){ try{ await track.applyConstraints({advanced:[o]}); return true; }catch(e){ return false; } }
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible' && !shots.length) checkUpdate();
+  if (document.visibilityState === 'visible' && !shots.length && !stream) checkUpdate();
   if (document.visibilityState === 'visible' && stream && (!track || track.readyState === 'ended')) startCam();
 });
 
@@ -926,10 +927,11 @@ function exitEdit(){
 /* ---------- go ---------- */
 $('bStart').onclick = startCam;
 orientUI(); refresh(); layout(); requestAnimationFrame(loop);
-checkUpdate();
-if (navigator.permissions && navigator.permissions.query){
+// Check for an update before touching the camera, so an update never costs a second camera prompt.
+Promise.race([checkUpdate(), new Promise(r => setTimeout(() => r(false), 2500))]).then(reloading => {
+  if (reloading || !navigator.permissions || !navigator.permissions.query) return;
   navigator.permissions.query({name:'camera'}).then(p => { if (p.state === 'granted') startCam(); }).catch(()=>{});
-}
+});
 })();
 </script>
 </body>
