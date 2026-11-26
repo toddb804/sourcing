@@ -28,8 +28,10 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;paddin
 /* top bar */
 .top{display:flex;align-items:center;gap:8px;padding:calc(env(safe-area-inset-top) + 8px) 16px 8px;background:var(--bg)}
 .top .sp{flex:1}
-.pill{height:32px;padding:0 12px;border-radius:99px;background:var(--card);color:var(--muted);font-size:13px;font-weight:700;letter-spacing:.3px}
+.pill{height:32px;padding:0 11px;white-space:nowrap;border-radius:99px;background:var(--card);color:var(--muted);font-size:13px;font-weight:700;letter-spacing:.3px}
 .pill.on{color:var(--orange-hi);background:rgba(204,85,0,.16)}
+.top{gap:6px}
+@media (max-width:430px){.tag{display:none}}
 .tag{font-size:11px;font-weight:800;letter-spacing:1px;color:var(--faint);text-transform:uppercase}
 
 /* stage */
@@ -48,6 +50,9 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;paddin
 #reticle{position:absolute;width:76px;height:76px;margin:-38px 0 0 -38px;border:1.5px solid var(--orange-hi);border-radius:6px;
   opacity:0;transform:scale(1.25);transition:opacity .2s,transform .2s;pointer-events:none}
 #reticle.show{opacity:1;transform:scale(1)}
+#anchor{position:absolute;width:26px;height:26px;margin:-13px 0 0 -13px;border:2px dashed var(--good);border-radius:50%;display:none}
+#anchor.show{display:block}
+#anchor.bad{border-color:var(--warn);border-style:solid}
 #reticle.gray{border-radius:50%;border-color:#fff;width:44px;height:44px;margin:-22px 0 0 -22px}
 #flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .25s}
 #toast{position:absolute;left:16px;right:16px;bottom:14px;margin:auto;max-width:440px;background:rgba(14,14,16,.92);border:1px solid var(--line);
@@ -119,13 +124,14 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;paddin
     <button id="bGrid" class="pill">Grid</button>
     <button id="bCrop" class="pill">4:3</button>
     <button id="bAuto" class="pill">Auto-save</button>
+    <button id="bLock" class="pill">Lock</button>
     <span class="sp"></span>
     <span id="modeTag" class="tag"></span>
   </div>
 
   <div id="stage">
     <canvas id="view"></canvas>
-    <div id="overlay"><div id="gridBox"><div id="grid"></div></div><div class="mask" id="m1"></div><div class="mask" id="m2"></div></div>
+    <div id="overlay"><div id="gridBox"><div id="grid"></div></div><div class="mask" id="m1"></div><div class="mask" id="m2"></div><div id="anchor"></div></div>
     <div id="reticle"></div>
     <div id="flash"></div>
     <div id="pickHint">Tap the gray card</div>
@@ -222,13 +228,16 @@ let stream = null, track = null, caps = {};
 let hwWB = false, hwPOI = false, hwFocusModes = [], afLocked = false;
 let editSrc = null;                 // canvas holding a photo being fixed
 let texDirty = true;
+let lock = null;                    // {nx, ny, ref:[r,g,b], drift:[r,g,b], ok} background spot that holds brightness + color steady
+const TARGET_GRAY = 0.18;           // middle gray, linear (sRGB 118)
 
 function currentGains(){
   let g = [1,1,1];
   if (S.gray) g = g.map((v,i) => v*S.gray[i]);
   if (S.kelvin && !(hwWB && !editSrc)) { const k = kelvinGains(S.kelvin); g = g.map((v,i) => v*k[i]); }
   g = normLum(g);
-  const f = Math.pow(2, S.ev);
+  const f = Math.pow(2, S.ev) * (S.gray ? (S.grayExp || 1) : 1);
+  if (lock && !editSrc) g = g.map((v,i) => v*lock.drift[i]);
   return g.map(v => v*f);
 }
 
@@ -268,9 +277,13 @@ function draw(upload){
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   return true;
 }
+let frameN = 0;
 function loop(){
   if (editSrc){ draw(texDirty); texDirty = false; }
-  else if (video.readyState >= 2) draw(true);
+  else if (video.readyState >= 2){
+    if (lock && (++frameN % 3 === 0)) updateLock(0.3);
+    draw(true);
+  }
   requestAnimationFrame(loop);
 }
 
@@ -291,6 +304,7 @@ function layout(){
     else { Object.assign(m1.style,{left:0,top:0,width:dw+'px',height:c.y+'px'}); Object.assign(m2.style,{left:0,top:(c.y+c.h)+'px',width:dw+'px',height:c.y+'px'}); }
     m1.style.display = m2.style.display = 'block';
   } else m1.style.display = m2.style.display = 'none';
+  if (typeof placeAnchor === 'function' && lock) placeAnchor();
 }
 function cropRect(w,h){
   if (S.crop !== '1:1') return {x:0,y:0,w,h};
@@ -369,26 +383,71 @@ async function toggleAFLock(){
 
 /* ---------- gray card ---------- */
 const sCan = document.createElement('canvas'), sCtx = sCan.getContext('2d', {willReadFrequently:true});
-function sampleGray(nx, ny){
+function measure(nx, ny, frac){
   const src = editSrc || video, [w,h] = srcSize();
-  const r = Math.max(6, Math.round(Math.min(w,h)*0.025));
+  if (!w || !h) return null;
+  const r = Math.max(6, Math.round(Math.min(w,h)*frac));
   const sx = Math.max(0, Math.min(w-2*r, Math.round(nx*w)-r)), sy = Math.max(0, Math.min(h-2*r, Math.round(ny*h)-r));
-  const n = Math.min(48, 2*r);
+  const n = Math.min(32, 2*r);
   sCan.width = sCan.height = n;
   sCtx.drawImage(src, sx, sy, 2*r, 2*r, 0, 0, n, n);
   const d = sCtx.getImageData(0,0,n,n).data;
-  let R=0,G=0,B=0,c=0,clip=0;
+  let R=0,G=0,B=0,c=0;
   for (let i=0;i<d.length;i+=4){
-    if (d[i]>250||d[i+1]>250||d[i+2]>250){ clip++; continue; }
+    if (d[i]>250||d[i+1]>250||d[i+2]>250) continue;
     R+=lin(d[i]/255); G+=lin(d[i+1]/255); B+=lin(d[i+2]/255); c++;
   }
-  if (c < n*n*0.3) return {err:'That spot is blown out. Lower the brightness or move the light, then tap the card again.'};
-  R/=c; G/=c; B/=c;
+  const okFrac = c/(n*n);
+  if (c) { R/=c; G/=c; B/=c; }
+  return {R, G, B, okFrac, sw:[d[0],d[1],d[2]]};
+}
+function sampleGray(nx, ny){
+  const m0 = measure(nx, ny, 0.025);
+  if (!m0 || m0.okFrac < 0.3) return {err:'That spot is blown out. Lower Bright or move the light, then tap the card again.'};
+  // If the lock is holding things steady, read the card the way the lock sees it.
+  const d = lock && !editSrc ? lock.drift : [1,1,1];
+  const R = m0.R*d[0], G = m0.G*d[1], B = m0.B*d[2];
   const m = Math.max(R,G,B), mn = Math.min(R,G,B);
-  if (m < 0.01) return {err:'That spot is too dark to read. Tap the gray card itself.'};
+  if (m < 0.005) return {err:'That spot is too dark to read. Tap the gray card itself.'};
   if ((m-mn)/m > 0.88) return {err:"That doesn't look like a gray card (too colorful). Tap the middle of the card."};
-  const avg = (R+G+B)/3;
-  return {gains:[avg/R, avg/G, avg/B], sw:[d[0],d[1],d[2]]};
+  const avg = (R+G+B)/3, gains = [avg/R, avg/G, avg/B];
+  const Lg = .2126*gains[0] + .7152*gains[1] + .0722*gains[2];
+  const want = TARGET_GRAY*Lg/avg;                  // brightness that puts the card at middle gray
+  const exp = Math.min(4, Math.max(0.25, want));
+  return {gains, exp, clamped: exp !== want, dark: want > 1, sw:m0.sw};
+}
+
+/* ---------- lock: hold brightness + color steady using a background spot ---------- */
+function updateLock(alpha){
+  const m = measure(lock.nx, lock.ny, 0.02);
+  if (!m || m.okFrac < 0.5 || Math.min(m.R, m.G, m.B) < 0.002){ setLockOk(false); return; }
+  const raw = [lock.ref[0]/m.R, lock.ref[1]/m.G, lock.ref[2]/m.B];
+  const mean = Math.cbrt(raw[0]*raw[1]*raw[2]), spread = Math.max(...raw)/Math.min(...raw);
+  // Something covered the spot (a garment, a hand): keep the last good correction.
+  if (spread > 1.6 || mean < 0.25 || mean > 4){ setLockOk(false); return; }
+  lock.drift = lock.drift.map((v,i) => v*(1-alpha) + raw[i]*alpha);
+  setLockOk(true);
+}
+function setLockOk(ok){
+  if (lock.ok === ok) return;
+  lock.ok = ok; $('anchor').classList.toggle('bad', !ok);
+  if (!ok) toast("Lock spot is covered. Keep that spot of background clear, or tap Lock to set a new one.");
+}
+function setLock(nx, ny, cx, cy){
+  showReticle(cx, cy, true);
+  const m = measure(nx, ny, 0.02);
+  if (!m || m.okFrac < 0.8 || Math.max(m.R, m.G, m.B) > 0.8){ toast("That spot is too bright to track. Pick a spot that isn't pure white, like a shaded corner of the backdrop."); return; }
+  if (Math.max(m.R, m.G, m.B) < 0.01){ toast('That spot is too dark to track. Pick a lighter part of the backdrop.'); return; }
+  lock = {nx, ny, ref:[m.R, m.G, m.B], drift:[1,1,1], ok:true};
+  $('anchor').classList.remove('bad');
+  setPick(null); refresh(); placeAnchor();
+  toast('Locked. Brightness and color will stay the same shot to shot. Keep that spot visible.');
+}
+function clearLock(){ lock = null; refresh(); placeAnchor(); }
+function placeAnchor(){
+  const a = $('anchor');
+  a.classList.toggle('show', !!lock && !editSrc);
+  if (lock){ a.style.left = (lock.nx*disp.w)+'px'; a.style.top = (lock.ny*disp.h)+'px'; }
 }
 async function grayTap(nx, ny, cx, cy){
   showReticle(cx, cy, true);
@@ -400,14 +459,27 @@ async function grayTap(nx, ny, cx, cy){
   const prevKelvin = S.kelvin;
   const res = sampleGray(nx, ny);
   if (res.err){ toast(res.err); return; }
-  S.gray = res.gains; S.graySw = res.sw;
+  S.gray = res.gains; S.grayExp = res.exp; S.graySw = res.sw;
   if (!hwWB || editSrc) S.kelvin = null;   // card now sets color; the dial becomes a fine-tune from here
   else S.kelvin = prevKelvin;
-  save(); setPick(false); refresh();
-  toast('Gray card set. Every shot gets this correction until you clear it.');
+  save(); refresh();
+  const note = res.clamped ? (res.dark ? ' The card is very dark, so brightness hit its limit. Add light if you can.' : ' The card is very bright, so brightness hit its limit.') : '';
+  if (!editSrc && !lock){
+    setPick('anchor');
+    toast('Card set for color and brightness. Now tap a spot of background that stays in every shot to lock it in.' + note);
+  } else {
+    setPick(null);
+    toast('Card set for color and brightness.' + note);
+  }
 }
-let picking = false;
-function setPick(on){ picking = on; $('pickHint').classList.toggle('show', on); $('grayPick').classList.toggle('on', on); }
+let picking = null;                 // 'gray' | 'anchor' | null
+function setPick(mode){
+  picking = mode || null;
+  $('pickHint').textContent = picking === 'anchor' ? 'Tap a background spot to lock' : 'Tap the gray card';
+  $('pickHint').classList.toggle('show', !!picking);
+  $('grayPick').classList.toggle('on', picking === 'gray');
+  refresh(false);
+}
 
 /* ---------- stage taps ---------- */
 stage.addEventListener('click', e => {
@@ -416,7 +488,7 @@ stage.addEventListener('click', e => {
   const nx = (e.clientX - r.left)/r.width, ny = (e.clientY - r.top)/r.height;
   if (nx<0||nx>1||ny<0||ny>1) return;
   const sr = stage.getBoundingClientRect(), cx = e.clientX - sr.left, cy = e.clientY - sr.top;
-  if (picking) grayTap(nx, ny, cx, cy); else focusAt(nx, ny, cx, cy);
+  if (picking === 'gray') grayTap(nx, ny, cx, cy); else if (picking === 'anchor') setLock(nx, ny, cx, cy); else focusAt(nx, ny, cx, cy);
 });
 let retT;
 function showReticle(x, y, gray){
@@ -487,8 +559,8 @@ function openPanel(p){
   ['WB','EV','Gray'].forEach(k => { $('p'+k).hidden = panel !== k; $('c'+k).classList.toggle('sel', panel === k); });
   if (panel === 'WB') paintWB();
   if (panel === 'EV') paintEV();
-  if (panel === 'Gray' && !S.gray) setPick(true);
-  if (panel !== 'Gray') setPick(false);
+  if (panel === 'Gray' && !S.gray) setPick('gray');
+  if (panel !== 'Gray' && picking === 'gray') setPick(null);
   setTimeout(layout, 0);
 }
 $('cWB').onclick = () => openPanel('WB');
@@ -497,8 +569,15 @@ $('cGray').onclick = () => openPanel('Gray');
 $('cAF').onclick = toggleAFLock;
 $('wbAuto').onclick = () => { setKelvin(null); paintWB(); };
 $('evZero').onclick = () => { S.ev = 0; save(); refresh(); paintEV(); };
-$('grayPick').onclick = () => setPick(!picking);
-$('grayClear').onclick = () => { S.gray = null; S.graySw = null; save(); setPick(false); refresh(); };
+$('grayPick').onclick = () => setPick(picking === 'gray' ? null : 'gray');
+$('grayClear').onclick = () => { S.gray = null; S.grayExp = null; S.graySw = null; save(); setPick(null); refresh(); };
+$('bLock').onclick = () => {
+  if (picking === 'anchor'){ setPick(null); return; }
+  if (lock){ clearLock(); toast('Unlocked. The camera adjusts on its own again.'); return; }
+  if (editSrc){ toast('Lock is for the live camera.'); return; }
+  if (!stream){ toast('Start the camera first.'); return; }
+  setPick('anchor'); toast('Tap a spot of background that stays visible in every shot, like a corner of the backdrop.');
+};
 $('bGrid').onclick = () => { S.grid = !S.grid; save(); refresh(); };
 $('bAuto').onclick = () => { S.autosave = !S.autosave; save(); refresh(); toast(S.autosave ? 'Auto-save on: after each shot, tap Save Image.' : 'Auto-save off: photos collect in the thumbnail. Save them all at once from there.'); };
 $('bCrop').onclick = () => { S.crop = S.crop === '1:1' ? '4:3' : '1:1'; save(); refresh(); layout(); };
@@ -514,7 +593,7 @@ function refresh(persist){
   $('cGray').classList.toggle('set', !!S.gray);
   $('graySw').style.background = S.graySw ? `rgb(${S.graySw.join(',')})` : 'transparent';
   $('grayTxt').textContent = S.gray
-    ? 'Card is set and applied to every shot. Re-tap the card if your lighting changes.'
+    ? 'Card sets color and brightness on every shot. Re-tap it if your lighting changes.'
     : "Put a gray card in the light you're shooting in, then tap it on screen.";
   $('vEV').textContent = (S.ev>0?'+':'') + S.ev.toFixed(1);
   $('cEV').classList.toggle('active', S.ev !== 0);
@@ -523,6 +602,8 @@ function refresh(persist){
   $('cAF').classList.toggle('active', afLocked);
   $('bGrid').classList.toggle('on', S.grid); $('grid').classList.toggle('show', S.grid);
   $('bAuto').classList.toggle('on', !!S.autosave);
+  $('bLock').textContent = picking === 'anchor' ? 'Skip lock' : (lock ? 'Locked' : 'Lock');
+  $('bLock').classList.toggle('on', !!lock || picking === 'anchor');
   $('bCrop').textContent = S.crop; $('bCrop').classList.toggle('on', S.crop === '1:1');
   $('modeTag').textContent = editSrc ? 'photo fix' : (stream ? (hwWB ? 'hardware WB' : 'color by app') : '');
   $('shutter').classList.toggle('save', !!editSrc);
@@ -540,6 +621,7 @@ function stamp(){
 }
 function capture(){
   if (!editSrc && (!stream || video.readyState < 2)) return;
+  if (lock && !editSrc) updateLock(0.7);
   if (!draw(true)) return;
   const w = view.width, h = view.height, c = cropRect(w, h);
   out.width = Math.round(c.w); out.height = Math.round(c.h);
@@ -614,7 +696,7 @@ $('file').onchange = async e => {
     c.width = Math.round(img.naturalWidth*s); c.height = Math.round(img.naturalHeight*s);
     c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);   // drawImage honors photo rotation
     URL.revokeObjectURL(url);
-    editSrc = c; texDirty = true; $('start').style.display = 'none';
+    editSrc = c; texDirty = true; $('start').style.display = 'none'; placeAnchor(); if (picking === 'anchor') setPick(null);
     refresh(); layout();
     toast('Tap Gray Card then the card in this photo, or use the Kelvin dial. Orange button saves.');
   };
@@ -622,7 +704,7 @@ $('file').onchange = async e => {
   img.src = url;
 };
 function exitEdit(){
-  editSrc = null; texDirty = true;
+  editSrc = null; texDirty = true; placeAnchor();
   if (!stream) $('start').style.display = '';
   refresh(); layout();
 }
