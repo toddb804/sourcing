@@ -65,7 +65,21 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;paddin
 .btn.ghost{background:var(--card);color:var(--text)}
 
 /* controls: everything within thumb reach, fixed height so the preview never moves */
-.controls{flex:none;background:var(--panel);padding:8px 14px calc(var(--sab) + 8px)}
+.controls{position:relative;flex:none;background:var(--panel);padding:8px 14px calc(var(--sab) + 8px)}
+#bShoot{margin-top:12px;height:48px;padding:0 22px;border-radius:14px;background:var(--orange);color:#fff;font-weight:800;font-size:15px}
+#shootInfo{display:none}
+/* Shoot mode: the whole bottom area is the shutter; everything else is hidden but keeps its space, so the preview doesn't move */
+#app.shoot .slot, #app.shoot .chips, #app.shoot #thumb, #app.shoot #bMore, #app.shoot #bDone{visibility:hidden;pointer-events:none}
+#app.shoot #shutter{position:absolute;left:14px;right:14px;top:8px;bottom:calc(var(--sab) + 8px);width:auto;height:auto;border:0;border-radius:22px;
+  background:#141417;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px}
+#app.shoot #shutter i{width:112px;height:112px;box-shadow:0 0 0 6px #141417,0 0 0 11px #fff;flex:none}
+#app.shoot #shutter.fired i{box-shadow:0 0 0 6px #141417,0 0 0 11px var(--good)}
+#app.shoot #shootInfo{display:block;font-size:14px;font-weight:700;color:var(--muted);pointer-events:none}
+#shootExit{position:absolute;top:12px;left:0;right:0;margin:auto;width:max-content;display:none;z-index:5;height:44px;padding:0 18px;border-radius:99px;
+  background:rgba(14,14,16,.88);border:1px solid var(--line);color:var(--muted);font-size:14px;font-weight:700;overflow:hidden;touch-action:none}
+#shootExit .fill{position:absolute;left:0;top:0;bottom:0;width:0;background:rgba(204,85,0,.45)}
+#shootExit span{position:relative}
+#app.shoot #shootExit{display:block}
 .slot{position:relative;height:128px}
 .panel{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:flex-end;gap:8px}
 .panel[hidden]{display:none}
@@ -158,6 +172,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;paddin
     <div id="overlay"><div id="gridBox"><div id="grid"></div></div><div id="anchor"></div></div>
     <div id="reticle"></div>
     <div id="pickHint">Tap the gray card</div>
+    <button id="shootExit"><i class="fill"></i><span>Hold for controls</span></button>
     <div id="toast"></div>
     <div id="start">
       <h1>Listing Cam</h1>
@@ -170,7 +185,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;paddin
 
   <div class="controls">
     <div class="slot">
-      <div class="panel" id="pNone"><p id="status"></p></div>
+      <div class="panel" id="pNone"><p id="status"></p><button id="bShoot">Shoot mode</button></div>
 
       <div class="panel" id="pWB" hidden>
         <div class="phead"><span>Kelvin <span id="wbHow"></span></span><b id="wbVal" class="num">AUTO</b><button class="sbtn" id="wbAuto">Auto</button></div>
@@ -210,7 +225,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;paddin
 
     <div class="shutter-row" id="srow">
       <button id="thumb" aria-label="Photos"><span class="n" id="thumbN"></span></button>
-      <label id="shutter" role="button" aria-label="Take photo"><input type="checkbox" switch id="hapSw" tabindex="-1" aria-hidden="true"><i></i></label>
+      <label id="shutter" role="button" aria-label="Take photo"><input type="checkbox" switch id="hapSw" tabindex="-1" aria-hidden="true"><i></i><span id="shootInfo"></span></label>
       <button class="sq" id="bMore">More</button>
       <button class="sq" id="bDone" style="display:none">Back to<br>camera</button>
     </div>
@@ -248,7 +263,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;paddin
 (function(){
 'use strict';
 /* ---------- version + self-update (iPhone home-screen apps hold on to old copies) ---------- */
-const APP_VERSION = 12;
+const APP_VERSION = 13;
 document.getElementById('verStart').textContent = 'Version ' + APP_VERSION;
 document.getElementById('verGal').textContent = '· v' + APP_VERSION;
 async function checkUpdate(){
@@ -543,7 +558,8 @@ function setLock(nx, ny, cx, cy){
   lock = {nx, ny, ref:[m.R, m.G, m.B], drift:[1,1,1], ok:true};
   $('anchor').classList.remove('bad');
   setPick(null); refresh(); placeAnchor();
-  toast('Locked. Brightness and color will stay the same shot to shot. Keep that spot visible.');
+  setShoot(true);
+  toast('Locked, and in Shoot mode: tap anywhere at the bottom to shoot. Hold the top button for controls.');
 }
 function clearLock(){ lock = null; refresh(); placeAnchor(); }
 function placeAnchor(){
@@ -589,7 +605,7 @@ stage.addEventListener('click', e => {
   const L = toLocal(e.clientX, e.clientY), cx = L.x - stage.offsetLeft, cy = L.y - stage.offsetTop;
   const nx = (cx - disp.x)/disp.w, ny = (cy - disp.y)/disp.h;
   if (nx<0||nx>1||ny<0||ny>1) return;
-  if (picking === 'gray') grayTap(nx, ny, cx, cy); else if (picking === 'anchor') setLock(nx, ny, cx, cy); else focusAt(nx, ny, cx, cy);
+  if (shootMode) focusAt(nx, ny, cx, cy); else if (picking === 'gray') grayTap(nx, ny, cx, cy); else if (picking === 'anchor') setLock(nx, ny, cx, cy); else focusAt(nx, ny, cx, cy);
 });
 let retT;
 function showReticle(x, y, gray){
@@ -700,6 +716,28 @@ function statusText(){
   const un = shots.filter(s => !s.saved).length;
   return 'Ready. Color and brightness are locked.' + (un ? ` <b>${un}</b> photo${un>1?'s':''} not saved yet.` : '');
 }
+/* ---------- shoot mode: one big shutter, nothing else to hit ---------- */
+let shootMode = false;
+function shootInfo(){
+  const un = shots.filter(s => !s.saved).length;
+  $('shootInfo').textContent = shots.length ? `${shots.length} photo${shots.length>1?'s':''}` + (un ? ` · ${un} not saved` : '') : 'Tap anywhere here to shoot';
+}
+function setShoot(on){
+  shootMode = !!on && !editSrc && !!stream;
+  if (shootMode){ openPanel(null); if (picking) setPick(null); $('sheet').hidden = true; }
+  $('app').classList.toggle('shoot', shootMode);
+  refresh(false);
+}
+(function(){
+  const b = $('shootExit'), fill = b.querySelector('.fill'); let t = null;
+  const start = e => { e.preventDefault(); fill.style.transition = 'width .8s linear'; fill.style.width = '100%';
+    t = setTimeout(() => { t = null; fill.style.transition = 'none'; fill.style.width = '0'; setShoot(false); haptic(); }, 800); };
+  const stop = () => { if (t){ clearTimeout(t); t = null; } fill.style.transition = 'width .15s'; fill.style.width = '0'; };
+  b.addEventListener('pointerdown', start); ['pointerup','pointercancel','pointerleave'].forEach(ev => b.addEventListener(ev, stop));
+  b.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); });
+})();
+$('bShoot').onclick = () => { setShoot(true); toast('Shoot mode. Tap anywhere at the bottom to shoot. Hold the top button to get controls back.'); };
+
 function refresh(persist){
   if (persist !== false) save();
   const sw = !hwWB || editSrc;
@@ -727,6 +765,8 @@ function refresh(persist){
   $('cLock').classList.toggle('set', !!lock && lock.ok); $('cLock').classList.toggle('warn', !!lock && !lock.ok);
   $('cLock').classList.toggle('active', picking === 'anchor');
   $('status').innerHTML = statusText();
+  $('bShoot').style.display = (stream && !editSrc) ? '' : 'none';
+  shootInfo();
   $('shutter').classList.toggle('save', !!editSrc);
   $('bMore').style.display = editSrc ? 'none' : ''; $('bDone').style.display = editSrc ? '' : 'none';
   texDirty = true;
@@ -780,6 +820,7 @@ function updThumb(){
   t.style.backgroundImage = last ? `url(${last.url})` : '';
   $('thumbN').textContent = unsaved; $('thumbN').style.display = unsaved ? 'grid' : 'none';
   $('status').innerHTML = statusText();
+  shootInfo();
 }
 $('shutter').addEventListener('click', e => { if (e.target.id !== 'hapSw') capture(); });   // the label's click also reaches the switch; take one photo
 document.addEventListener('keydown', e => { if (!$('viewer').hidden || !$('sheet').hidden) return; if (e.key === ' ' || e.key === 'Enter' || e.key === 'AudioVolumeUp') { e.preventDefault(); capture(); } });
@@ -932,7 +973,7 @@ $('file').onchange = async e => {
     c.width = Math.round(img.naturalWidth*s); c.height = Math.round(img.naturalHeight*s);
     c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);   // drawImage honors photo rotation
     URL.revokeObjectURL(url);
-    editSrc = c; texDirty = true; $('start').style.display = 'none'; placeAnchor(); if (picking === 'anchor') setPick(null);
+    setShoot(false); editSrc = c; texDirty = true; $('start').style.display = 'none'; placeAnchor(); if (picking === 'anchor') setPick(null);
     refresh(); layout();
     toast('Tap Gray Card then the card in this photo, or use the Kelvin dial. Orange button saves.');
   };
