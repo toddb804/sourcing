@@ -278,7 +278,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;paddin
 (function(){
 'use strict';
 /* ---------- version + self-update (iPhone home-screen apps hold on to old copies) ---------- */
-const APP_VERSION = 15;
+const APP_VERSION = 16;
 document.getElementById('verStart').textContent = 'Version ' + APP_VERSION;
 document.getElementById('verGal').textContent = '· v' + APP_VERSION;
 async function checkUpdate(){
@@ -324,6 +324,7 @@ let stream = null, track = null, caps = {};
 let hwWB = false, hwPOI = false, hwFocusModes = [], afLocked = false;
 let editSrc = null;                 // canvas holding a photo being fixed
 let texDirty = true;
+let hwLocked = false;               // the camera itself is frozen (white balance + exposure), so no lock spot is needed
 let lock = null;                    // {nx, ny, ref:[r,g,b], drift:[r,g,b], ok} background spot that holds brightness + color steady
 const TARGET_GRAY = 0.18;           // middle gray, linear (sRGB 118)
 
@@ -465,6 +466,7 @@ async function startCam(){
   }
   $('start').style.display = 'none';
   if (S.kelvin) await setKelvin(S.kelvin); else await setKelvin(null);
+  if (S.hwSnap) await restoreFreeze();
   if (hwFocusModes.includes('continuous')) applyAdv({focusMode:'continuous'});
   refresh();
 }
@@ -582,13 +584,46 @@ function placeAnchor(){
   a.classList.toggle('show', !!lock && !editSrc);
   if (lock){ a.style.left = (lock.nx*disp.w)+'px'; a.style.top = (lock.ny*disp.h)+'px'; }
 }
+async function freezeCamera(){
+  if (!track || editSrc) return false;
+  const wbModes = caps.whiteBalanceMode || [], exModes = caps.exposureMode || [];
+  if (!wbModes.includes('manual') || !exModes.includes('manual')) return false;
+  const st0 = track.getSettings ? track.getSettings() : {};
+  if (hwWB && !S.kelvin && st0.colorTemperature) await setKelvin(Math.round(st0.colorTemperature/50)*50);
+  else await applyAdv({whiteBalanceMode:'manual'});
+  await applyAdv({exposureMode:'manual'});
+  await new Promise(r => setTimeout(r, 400));                      // let the frozen settings reach the picture
+  const st = track.getSettings ? track.getSettings() : {};
+  const ok = st.whiteBalanceMode === 'manual' && st.exposureMode === 'manual';
+  if (ok){
+    const snap = {};
+    ['colorTemperature','exposureTime','iso','exposureCompensation'].forEach(k => { if (typeof st[k] === 'number' && caps[k]) snap[k] = st[k]; });
+    S.hwSnap = snap;
+  } else { await unfreezeCamera(); }
+  return ok;
+}
+async function unfreezeCamera(){
+  hwLocked = false; S.hwSnap = null;
+  if (!track) return;
+  if (!S.kelvin) await applyAdv({whiteBalanceMode:'continuous'});
+  await applyAdv({exposureMode:'continuous'});
+}
+// After the camera restarts, put the frozen settings back if the phone lets us set the exact values.
+async function restoreFreeze(){
+  const snap = S.hwSnap; if (!S.gray || !snap) return;
+  const need = ['exposureTime','iso'].every(k => k in snap) && (hwWB ? 'colorTemperature' in snap : false);
+  if (!need){ S.hwSnap = null; save(); toast('The camera restarted. Tap Gray Card and the card again to re-lock.'); return; }
+  const o = {whiteBalanceMode:'manual', exposureMode:'manual'}; Object.assign(o, snap);
+  await applyAdv(o);
+  const st = track.getSettings ? track.getSettings() : {};
+  hwLocked = st.whiteBalanceMode === 'manual' && st.exposureMode === 'manual';
+  if (!hwLocked) toast('The camera restarted. Tap Gray Card and the card again to re-lock.');
+  refresh();
+}
 async function grayTap(nx, ny, cx, cy){
   showReticle(cx, cy, true);
-  // On phones that allow it, lock the camera's own WB first so the card reading stays valid shot to shot.
-  if (!editSrc && hwWB && !S.kelvin){
-    const st = track.getSettings ? track.getSettings() : {};
-    if (st.colorTemperature) { await setKelvin(Math.round(st.colorTemperature/50)*50); await new Promise(r => setTimeout(r, 350)); }
-  }
+  // Where the phone allows it, freeze the camera's own white balance and exposure, then read the card.
+  if (!editSrc){ if (hwLocked) await unfreezeCamera(); hwLocked = await freezeCamera(); }
   const prevKelvin = S.kelvin;
   const res = sampleGray(nx, ny);
   if (res.err){ toast(res.err); return; }
@@ -597,9 +632,13 @@ async function grayTap(nx, ny, cx, cy){
   else S.kelvin = prevKelvin;
   save(); refresh();
   const note = res.clamped ? (res.dark ? ' The card is very dark, so brightness hit its limit. Add light if you can.' : ' The card is very bright, so brightness hit its limit.') : '';
-  if (!editSrc && !lock){
+  if (!editSrc && hwLocked){
+    if (lock) clearLock();
+    setPick(null); setShoot(true);
+    toast('Card set, and the camera is frozen at it. No lock spot needed. You are in Shoot mode.' + note);
+  } else if (!editSrc && !lock){
     setPick('anchor');
-    toast('Card set for color and brightness. Now tap a spot of background that stays in every shot to lock it in.' + note);
+    toast("This phone won't let the app freeze its camera. Tap a spot of backdrop to keep items consistent, or tap Skip." + note);
   } else {
     setPick(null);
     toast('Card set for color and brightness.' + note);
@@ -704,9 +743,14 @@ $('bMore').onclick = () => openPanel('More');
 $('wbAuto').onclick = () => { setKelvin(null); paintWB(); };
 $('evZero').onclick = () => { S.ev = 0; save(); refresh(); paintEV(); };
 $('grayPick').onclick = () => setPick(picking === 'gray' ? null : 'gray');
-$('grayClear').onclick = () => { S.gray = null; S.grayExp = null; S.graySw = null; save(); setPick(null); refresh(); };
+$('grayClear').onclick = () => { S.gray = null; S.grayExp = null; S.graySw = null; if (hwLocked) unfreezeCamera(); save(); setPick(null); refresh(); };
 $('cLock').onclick = () => {
-  if (picking === 'anchor'){ setPick(null); return; }
+  if (picking === 'anchor'){
+    setPick(null);
+    if (S.gray){ setShoot(true); toast('Lock skipped. The card is still applied, but the iPhone may shift color a little between items.'); }
+    return;
+  }
+  if (hwLocked){ toast('The camera is already frozen at your gray card. To change it, tap Gray Card and the card again.'); return; }
   if (lock){ clearLock(); toast('Unlocked. The camera adjusts on its own again.'); return; }
   if (editSrc){ toast('Lock is for the live camera.'); return; }
   if (!stream){ toast('Start the camera first.'); return; }
@@ -726,11 +770,12 @@ function statusText(){
   if (editSrc) return 'Fixing a photo. Tap <b>Gray Card</b> and then the card in it, or set <b>White Bal</b>. The orange button saves.';
   if (!stream) return '';
   if (!S.gray) return 'To start, put a gray card in your light, tap <b>Gray Card</b>, then tap the card.';
-  if (!lock) return 'Card set. Tap <b>Lock</b>, then a spot of backdrop, so every item comes out the same.';
+  if (hwLocked) return 'Ready. The camera is frozen at your gray card.' + unsavedNote();
+  if (!lock) return 'Card set. For the most consistent color, tap <b>Lock</b> and a spot of backdrop. Optional.';
   if (!lock.ok) return 'The lock spot is covered. Clear it, or tap <b>Lock</b> twice to pick a new spot.';
-  const un = shots.filter(s => !s.saved).length;
-  return 'Ready. Color and brightness are locked.' + (un ? ` <b>${un}</b> photo${un>1?'s':''} not saved yet.` : '');
+  return 'Ready. Color and brightness are locked.' + unsavedNote();
 }
+function unsavedNote(){ const un = shots.filter(s => !s.saved).length; return un ? ` <b>${un}</b> photo${un>1?'s':''} not saved yet.` : ''; }
 /* ---------- shoot mode: one big shutter, nothing else to hit ---------- */
 let shootMode = false;
 function shootInfo(){
@@ -785,8 +830,8 @@ function refresh(persist){
   $('hapSw').disabled = !S.sound;
   $('vSound').textContent = S.sound ? 'On' : 'Off'; $('bSound').classList.toggle('on', !!S.sound);
   $('vHand').textContent = S.lefty ? 'Left' : 'Right'; $('srow').classList.toggle('lefty', !!S.lefty); $('app').classList.toggle('lefty', !!S.lefty);
-  $('vLock').textContent = picking === 'anchor' ? 'SKIP' : (lock ? (lock.ok ? 'ON' : 'COVERED') : 'OFF');
-  $('cLock').classList.toggle('set', !!lock && lock.ok); $('cLock').classList.toggle('warn', !!lock && !lock.ok);
+  $('vLock').textContent = picking === 'anchor' ? 'SKIP' : hwLocked ? 'CAMERA' : (lock ? (lock.ok ? 'ON' : 'COVERED') : 'OFF');
+  $('cLock').classList.toggle('set', hwLocked || (!!lock && lock.ok)); $('cLock').classList.toggle('warn', !!lock && !lock.ok);
   $('cLock').classList.toggle('active', picking === 'anchor');
   $('status').innerHTML = statusText();
   $('bShoot').style.display = (stream && !editSrc) ? '' : 'none';
