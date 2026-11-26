@@ -125,6 +125,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;paddin
 .sheet-actions{display:flex;gap:8px;margin-top:12px}
 .sheet-actions .btn{flex:1;height:54px}
 .empty{color:var(--muted);padding:24px 0;text-align:center}
+.ver{font-size:12px;color:var(--faint);font-weight:600}
 
 /* full-screen review */
 #viewer{position:absolute;inset:0;background:#000;z-index:20;display:flex;flex-direction:column}
@@ -159,6 +160,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;paddin
       <h1>Listing Cam</h1>
       <p>Autofocus, a Kelvin dial and gray-card color for consistent listing photos.</p>
       <button class="btn" id="bStart">Start camera</button>
+      <p class="ver" id="verStart"></p>
       <p id="startErr" style="color:var(--warn)"></p>
     </div>
   </div>
@@ -212,7 +214,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;paddin
 
   <div id="sheet" hidden>
     <div class="sheet-in">
-      <div class="sheet-head"><b id="galTitle">Photos</b><button class="pill" id="galClose">Close</button></div>
+      <div class="sheet-head"><span><b id="galTitle">Photos</b> <span class="ver" id="verGal"></span></span><button class="pill" id="galClose">Close</button></div>
       <div class="gal" id="gal"></div>
       <div class="sheet-actions">
         <button class="btn ghost" id="galClear">Clear</button>
@@ -239,6 +241,22 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;paddin
 <script>
 (function(){
 'use strict';
+/* ---------- version + self-update (iPhone home-screen apps hold on to old copies) ---------- */
+const APP_VERSION = 8;
+document.getElementById('verStart').textContent = 'Version ' + APP_VERSION;
+document.getElementById('verGal').textContent = '· v' + APP_VERSION;
+async function checkUpdate(){
+  try{
+    const r = await fetch('./index.html?check=' + Date.now(), {cache:'no-store'});
+    const m = (await r.text()).match(/const APP_VERSION = (\d+);/);
+    if (!m || +m[1] <= APP_VERSION) return;
+    const key = 'listingcam-reloaded-' + m[1];
+    if (sessionStorage.getItem(key)) return;          // tried once already this session; don't loop
+    sessionStorage.setItem(key, '1');
+    await Promise.all(['./', './index.html'].map(u => fetch(u, {cache:'reload'}).catch(()=>{})));
+    location.replace('./?v=' + m[1]);
+  }catch(e){}
+}
 const $ = id => document.getElementById(id);
 const video = $('video'), view = $('view'), stage = $('stage');
 
@@ -415,6 +433,7 @@ async function startCam(){
 }
 async function applyAdv(o){ try{ await track.applyConstraints({advanced:[o]}); return true; }catch(e){ return false; } }
 document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && !shots.length) checkUpdate();
   if (document.visibilityState === 'visible' && stream && (!track || track.readyState === 'ended')) startCam();
 });
 
@@ -907,6 +926,7 @@ function exitEdit(){
 /* ---------- go ---------- */
 $('bStart').onclick = startCam;
 orientUI(); refresh(); layout(); requestAnimationFrame(loop);
+checkUpdate();
 if (navigator.permissions && navigator.permissions.query){
   navigator.permissions.query({name:'camera'}).then(p => { if (p.state === 'granted') startCam(); }).catch(()=>{});
 }
