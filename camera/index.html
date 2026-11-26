@@ -87,7 +87,8 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;paddin
 .gray-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .gray-btns .sbtn{height:48px}
 .swatch{width:40px;height:40px;border-radius:10px;border:1px solid var(--line);flex:none}
-.opts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.opts{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.opt{font-size:13px}
 .opt{height:58px;border-radius:12px;background:var(--card);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:14px;font-weight:700}
 .opt small{font-size:10px;font-weight:800;letter-spacing:.8px;color:var(--faint)}
 .opt.on{color:var(--orange-hi);background:rgba(204,85,0,.16)}
@@ -105,8 +106,10 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;paddin
 .shutter-row.lefty{flex-direction:row-reverse}
 #thumb{width:60px;height:60px;border-radius:12px;background:var(--card) center/cover no-repeat;border:2px solid var(--line);position:relative}
 #thumb .n{position:absolute;right:-7px;top:-7px;min-width:22px;height:22px;border-radius:99px;background:var(--orange);color:#fff;font-size:12px;font-weight:800;display:none;place-items:center;padding:0 5px}
-#shutter{width:84px;height:84px;border-radius:50%;border:4px solid #fff;display:grid;place-items:center}
-#shutter i{width:66px;height:66px;border-radius:50%;background:#fff;transition:transform .1s}
+#shutter{width:104px;height:104px;border-radius:50%;border:5px solid #fff;display:grid;place-items:center;transition:border-color .15s}
+#shutter i{width:82px;height:82px;border-radius:50%;background:#fff;transition:transform .1s}
+#shutter.fired{border-color:var(--good);transition:none}
+#shutter.fired i{transform:scale(.86)}
 #shutter:active i{transform:scale(.9)}
 #shutter.save i{background:var(--orange)}
 .sq{width:60px;height:60px;border-radius:12px;background:var(--card);font-size:13px;font-weight:700;color:var(--muted);display:grid;place-items:center;text-align:center;line-height:1.15}
@@ -193,6 +196,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;paddin
           <button class="opt" id="bAF"><small>FOCUS</small><span id="vAF">Auto</span></button>
           <button class="opt" id="bEdit"><small>FIX A</small><span>Photo</span></button>
           <button class="opt" id="bHand"><small>HAND</small><span id="vHand">Right</span></button>
+          <button class="opt" id="bSound"><small>CLICK+BUZZ</small><span id="vSound">On</span></button>
         </div>
       </div>
     </div>
@@ -242,7 +246,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;paddin
 (function(){
 'use strict';
 /* ---------- version + self-update (iPhone home-screen apps hold on to old copies) ---------- */
-const APP_VERSION = 9;
+const APP_VERSION = 10;
 document.getElementById('verStart').textContent = 'Version ' + APP_VERSION;
 document.getElementById('verGal').textContent = '· v' + APP_VERSION;
 async function checkUpdate(){
@@ -262,7 +266,7 @@ const $ = id => document.getElementById(id);
 const video = $('video'), view = $('view'), stage = $('stage');
 
 /* ---------- settings (remembered on this phone) ---------- */
-const S = Object.assign({kelvin:null, gray:null, graySw:null, ev:0, grid:true, crop:'1:1', autosave:true, lefty:false}, (()=>{
+const S = Object.assign({kelvin:null, gray:null, graySw:null, ev:0, grid:true, crop:'1:1', autosave:true, lefty:false, sound:true}, (()=>{
   try{ return JSON.parse(localStorage.getItem('listingcam') || '{}'); }catch(e){ return {}; }
 })());
 if (S.crop === '4:3') S.crop = '3:4';
@@ -677,6 +681,7 @@ $('cLock').onclick = () => {
 };
 $('bGrid').onclick = () => { S.grid = !S.grid; save(); refresh(); };
 $('bHand').onclick = () => { S.lefty = !S.lefty; save(); refresh(); };
+$('bSound').onclick = () => { S.sound = !S.sound; save(); refresh(); if (S.sound) shutterFeedback(); };
 $('bAuto').onclick = () => { S.autosave = !S.autosave; save(); refresh(); toast(S.autosave ? 'Auto-save on: after each shot, tap Save Image.' : 'Auto-save off: photos collect in the thumbnail. Save them all at once from there.'); };
 $('bCrop').onclick = () => {
   S.crop = S.crop === '1:1' ? '3:4' : '1:1'; save();
@@ -713,6 +718,7 @@ function refresh(persist){
   $('vGrid').textContent = S.grid ? 'On' : 'Off'; $('bGrid').classList.toggle('on', S.grid); $('grid').classList.toggle('show', S.grid);
   $('vAuto').textContent = S.autosave ? 'On' : 'Off'; $('bAuto').classList.toggle('on', !!S.autosave);
   $('vCrop').textContent = S.crop === '1:1' ? 'Square' : '3:4'; $('bCrop').classList.toggle('on', S.crop === '1:1');
+  $('vSound').textContent = S.sound ? 'On' : 'Off'; $('bSound').classList.toggle('on', !!S.sound);
   $('vHand').textContent = S.lefty ? 'Left' : 'Right'; $('srow').classList.toggle('lefty', !!S.lefty);
   $('vLock').textContent = picking === 'anchor' ? 'SKIP' : (lock ? (lock.ok ? 'ON' : 'COVERED') : 'OFF');
   $('cLock').classList.toggle('set', !!lock && lock.ok); $('cLock').classList.toggle('warn', !!lock && !lock.ok);
@@ -744,10 +750,46 @@ function capture(){
   const shot = {blob, url:URL.createObjectURL(blob), name:`listing_${stamp()}_${shotN}.jpg`, saved:false};
   shots.push(shot);
   updThumb();
+  confirmShot();
   const wasEdit = !!editSrc;
   if (wasEdit) exitEdit();
   if (S.autosave) shareFiles([shot]).then(ok => { if (!ok) toast('Not saved. Tap the thumbnail to save it later.'); });
   else if (wasEdit) toast('Fixed photo added. Tap the thumbnail to save.');
+}
+/* ---------- capture feedback you can hear and feel ---------- */
+let actx = null, hapticLabel = null;
+function shutterSound(){
+  try{
+    if (navigator.audioSession) navigator.audioSession.type = 'playback';   // iOS 17+: play even with the ringer switch on silent
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
+    const t0 = actx.currentTime + 0.005;
+    [[0, 0.045, 0.55], [0.07, 0.03, 0.4]].forEach(([at, len, vol]) => {       // two-part "ka-chik"
+      const n = Math.floor(actx.sampleRate*len), buf = actx.createBuffer(1, n, actx.sampleRate), d = buf.getChannelData(0);
+      for (let i = 0; i < n; i++) d[i] = (Math.random()*2 - 1) * Math.pow(1 - i/n, 3);
+      const src = actx.createBufferSource(), hp = actx.createBiquadFilter(), g = actx.createGain();
+      src.buffer = buf; hp.type = 'highpass'; hp.frequency.value = 1800; g.gain.value = vol;
+      src.connect(hp).connect(g).connect(actx.destination); src.start(t0 + at);
+    });
+  }catch(e){}
+}
+function haptic(){
+  try{
+    if (navigator.vibrate){ navigator.vibrate(35); return; }                // Android
+    if (!hapticLabel){                                                     // iPhone (iOS 18+): a switch toggle gives a system tap
+      hapticLabel = document.createElement('label');
+      hapticLabel.style.cssText = 'position:absolute;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none';
+      const sw = document.createElement('input'); sw.type = 'checkbox'; sw.setAttribute('switch', '');
+      hapticLabel.appendChild(sw); document.body.appendChild(hapticLabel);
+    }
+    hapticLabel.click();
+  }catch(e){}
+}
+function shutterFeedback(){ if (S.sound){ shutterSound(); haptic(); } }
+let firedT;
+function confirmShot(){
+  shutterFeedback();
+  const b = $('shutter'); b.classList.add('fired'); clearTimeout(firedT); firedT = setTimeout(() => b.classList.remove('fired'), 220);
 }
 function dataURLBlob(u){
   const bin = atob(u.slice(u.indexOf(',')+1)), a = new Uint8Array(bin.length);
