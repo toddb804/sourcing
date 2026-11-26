@@ -75,20 +75,24 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;paddin
 #app.shoot #shutter i{width:112px;height:112px;box-shadow:0 0 0 6px #141417,0 0 0 11px #fff;flex:none}
 #app.shoot #shutter.fired i{box-shadow:0 0 0 6px #141417,0 0 0 11px var(--good)}
 #app.shoot #shootInfo{display:block;font-size:14px;font-weight:700;color:var(--muted);pointer-events:none}
-#shootExit{position:absolute;top:12px;left:0;right:0;margin:auto;width:max-content;display:none;z-index:5;height:44px;padding:0 18px;border-radius:99px;
-  background:rgba(14,14,16,.88);border:1px solid var(--line);color:var(--muted);font-size:14px;font-weight:700;overflow:hidden;touch-action:none}
+/* Shoot mode extras live inside the shutter panel, never over the preview. A quick tap on them does nothing; they need a hold. */
+#shootExit{position:absolute;top:18px;right:28px;display:none;z-index:3;height:38px;padding:0 14px;border-radius:99px;
+  background:#1E1E22;border:1px solid var(--line);color:var(--muted);font-size:13px;font-weight:700;overflow:hidden;touch-action:none}
+#app.lefty #shootExit{right:auto;left:28px}
 #shootExit .fill{position:absolute;left:0;top:0;bottom:0;width:0;background:rgba(204,85,0,.45)}
 #shootExit span{position:relative}
 #app.shoot #shootExit{display:block}
-/* last-shot preview in Shoot mode: tap does nothing, hold opens it */
-#shootThumb{display:none;position:absolute;left:30px;top:calc(50% - var(--sab)/2);margin-top:-48px;width:84px;height:84px;border-radius:14px;
+#shootThumb{display:none;position:absolute;left:28px;top:calc(50% - var(--sab)/2);margin-top:-80px;width:140px;height:140px;border-radius:16px;
   background:#1E1E22 center/cover no-repeat;border:2px solid var(--line);z-index:2;touch-action:none;overflow:hidden}
-#app.lefty #shootThumb{left:auto;right:30px}
+#app.lefty #shootThumb{left:auto;right:28px}
 #app.shoot #shootThumb.has{display:block}
 #shootThumb .fill{position:absolute;left:0;right:0;bottom:0;height:0;background:rgba(204,85,0,.55)}
-#shootThumbCap{display:none;position:absolute;left:30px;width:84px;top:calc(50% - var(--sab)/2 + 42px);text-align:center;font-size:11px;font-weight:700;color:var(--faint);pointer-events:none;z-index:2}
-#app.lefty #shootThumbCap{left:auto;right:30px}
+#shootThumbCap{display:none;position:absolute;left:28px;width:140px;top:calc(50% - var(--sab)/2 + 66px);text-align:center;font-size:12px;font-weight:700;color:var(--faint);pointer-events:none;z-index:2}
+#app.lefty #shootThumbCap{left:auto;right:28px}
 #app.shoot #shootThumb.has + #shootThumbCap{display:block}
+/* with a last shot showing, the shutter moves over to make room */
+#app.shoot.hasshot #shutter{padding-left:150px}
+#app.shoot.hasshot.lefty #shutter{padding-left:0;padding-right:150px}
 .slot{position:relative;height:128px}
 .panel{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:flex-end;gap:8px}
 .panel[hidden]{display:none}
@@ -181,7 +185,6 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;paddin
     <div id="overlay"><div id="gridBox"><div id="grid"></div></div><div id="anchor"></div></div>
     <div id="reticle"></div>
     <div id="pickHint">Tap the gray card</div>
-    <button id="shootExit"><i class="fill"></i><span>Hold for controls</span></button>
     <div id="toast"></div>
     <div id="start">
       <h1>Listing Cam</h1>
@@ -240,6 +243,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;paddin
     </div>
     <div id="shootThumb" aria-label="Last photo, hold to view"><i class="fill"></i></div>
     <div id="shootThumbCap">Hold to view</div>
+    <button id="shootExit"><i class="fill"></i><span>Hold for controls</span></button>
   </div>
 
   <div id="sheet" hidden>
@@ -274,7 +278,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;paddin
 (function(){
 'use strict';
 /* ---------- version + self-update (iPhone home-screen apps hold on to old copies) ---------- */
-const APP_VERSION = 14;
+const APP_VERSION = 15;
 document.getElementById('verStart').textContent = 'Version ' + APP_VERSION;
 document.getElementById('verGal').textContent = '· v' + APP_VERSION;
 async function checkUpdate(){
@@ -570,7 +574,7 @@ function setLock(nx, ny, cx, cy){
   $('anchor').classList.remove('bad');
   setPick(null); refresh(); placeAnchor();
   setShoot(true);
-  toast('Locked, and in Shoot mode: tap anywhere at the bottom to shoot. Hold the top button for controls.');
+  toast('Locked, and in Shoot mode: tap anywhere in the bottom panel to shoot. Hold "Hold for controls" to get them back.');
 }
 function clearLock(){ lock = null; refresh(); placeAnchor(); }
 function placeAnchor(){
@@ -756,7 +760,7 @@ function setShoot(on){
   el.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); });
   el.addEventListener('contextmenu', e => e.preventDefault());
 })();
-$('bShoot').onclick = () => { setShoot(true); toast('Shoot mode. Tap anywhere at the bottom to shoot. Hold the top button to get controls back.'); };
+$('bShoot').onclick = () => { setShoot(true); toast('Shoot mode. Tap anywhere in the bottom panel to shoot. Hold "Hold for controls" to get them back.'); };
 
 function refresh(persist){
   if (persist !== false) save();
@@ -839,7 +843,7 @@ function updThumb(){
   const t = $('thumb'), last = shots[shots.length-1], unsaved = shots.filter(s => !s.saved).length;
   t.style.backgroundImage = last ? `url(${last.url})` : '';
   $('thumbN').textContent = unsaved; $('thumbN').style.display = unsaved ? 'grid' : 'none';
-  $('shootThumb').style.backgroundImage = last ? `url(${last.url})` : ''; $('shootThumb').classList.toggle('has', !!last);
+  $('shootThumb').style.backgroundImage = last ? `url(${last.url})` : ''; $('shootThumb').classList.toggle('has', !!last); $('app').classList.toggle('hasshot', !!last);
   $('status').innerHTML = statusText();
   shootInfo();
 }
