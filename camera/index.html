@@ -80,6 +80,15 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;paddin
 #shootExit .fill{position:absolute;left:0;top:0;bottom:0;width:0;background:rgba(204,85,0,.45)}
 #shootExit span{position:relative}
 #app.shoot #shootExit{display:block}
+/* last-shot preview in Shoot mode: tap does nothing, hold opens it */
+#shootThumb{display:none;position:absolute;left:30px;top:calc(50% - var(--sab)/2);margin-top:-48px;width:84px;height:84px;border-radius:14px;
+  background:#1E1E22 center/cover no-repeat;border:2px solid var(--line);z-index:2;touch-action:none;overflow:hidden}
+#app.lefty #shootThumb{left:auto;right:30px}
+#app.shoot #shootThumb.has{display:block}
+#shootThumb .fill{position:absolute;left:0;right:0;bottom:0;height:0;background:rgba(204,85,0,.55)}
+#shootThumbCap{display:none;position:absolute;left:30px;width:84px;top:calc(50% - var(--sab)/2 + 42px);text-align:center;font-size:11px;font-weight:700;color:var(--faint);pointer-events:none;z-index:2}
+#app.lefty #shootThumbCap{left:auto;right:30px}
+#app.shoot #shootThumb.has + #shootThumbCap{display:block}
 .slot{position:relative;height:128px}
 .panel{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:flex-end;gap:8px}
 .panel[hidden]{display:none}
@@ -229,6 +238,8 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;paddin
       <button class="sq" id="bMore">More</button>
       <button class="sq" id="bDone" style="display:none">Back to<br>camera</button>
     </div>
+    <div id="shootThumb" aria-label="Last photo, hold to view"><i class="fill"></i></div>
+    <div id="shootThumbCap">Hold to view</div>
   </div>
 
   <div id="sheet" hidden>
@@ -263,7 +274,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;paddin
 (function(){
 'use strict';
 /* ---------- version + self-update (iPhone home-screen apps hold on to old copies) ---------- */
-const APP_VERSION = 13;
+const APP_VERSION = 14;
 document.getElementById('verStart').textContent = 'Version ' + APP_VERSION;
 document.getElementById('verGal').textContent = '· v' + APP_VERSION;
 async function checkUpdate(){
@@ -736,6 +747,15 @@ function setShoot(on){
   b.addEventListener('pointerdown', start); ['pointerup','pointercancel','pointerleave'].forEach(ev => b.addEventListener(ev, stop));
   b.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); });
 })();
+(function(){
+  const el = $('shootThumb'), fill = el.querySelector('.fill'); let t = null;
+  const start = e => { e.preventDefault(); e.stopPropagation(); fill.style.transition = 'height .5s linear'; fill.style.height = '100%';
+    t = setTimeout(() => { t = null; fill.style.transition = 'none'; fill.style.height = '0'; if (shots.length) openViewer(shots.length - 1); }, 500); };
+  const stop = () => { if (t){ clearTimeout(t); t = null; } fill.style.transition = 'height .15s'; fill.style.height = '0'; };
+  el.addEventListener('pointerdown', start); ['pointerup','pointercancel','pointerleave'].forEach(ev => el.addEventListener(ev, stop));
+  el.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); });
+  el.addEventListener('contextmenu', e => e.preventDefault());
+})();
 $('bShoot').onclick = () => { setShoot(true); toast('Shoot mode. Tap anywhere at the bottom to shoot. Hold the top button to get controls back.'); };
 
 function refresh(persist){
@@ -760,7 +780,7 @@ function refresh(persist){
   $('vCrop').textContent = S.crop === '1:1' ? 'Square' : '3:4'; $('bCrop').classList.toggle('on', S.crop === '1:1');
   $('hapSw').disabled = !S.sound;
   $('vSound').textContent = S.sound ? 'On' : 'Off'; $('bSound').classList.toggle('on', !!S.sound);
-  $('vHand').textContent = S.lefty ? 'Left' : 'Right'; $('srow').classList.toggle('lefty', !!S.lefty);
+  $('vHand').textContent = S.lefty ? 'Left' : 'Right'; $('srow').classList.toggle('lefty', !!S.lefty); $('app').classList.toggle('lefty', !!S.lefty);
   $('vLock').textContent = picking === 'anchor' ? 'SKIP' : (lock ? (lock.ok ? 'ON' : 'COVERED') : 'OFF');
   $('cLock').classList.toggle('set', !!lock && lock.ok); $('cLock').classList.toggle('warn', !!lock && !lock.ok);
   $('cLock').classList.toggle('active', picking === 'anchor');
@@ -819,6 +839,7 @@ function updThumb(){
   const t = $('thumb'), last = shots[shots.length-1], unsaved = shots.filter(s => !s.saved).length;
   t.style.backgroundImage = last ? `url(${last.url})` : '';
   $('thumbN').textContent = unsaved; $('thumbN').style.display = unsaved ? 'grid' : 'none';
+  $('shootThumb').style.backgroundImage = last ? `url(${last.url})` : ''; $('shootThumb').classList.toggle('has', !!last);
   $('status').innerHTML = statusText();
   shootInfo();
 }
