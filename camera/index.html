@@ -49,7 +49,8 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;paddin
 #anchor.show{display:block}
 #anchor.bad{border-color:var(--warn);border-style:solid}
 #reticle.gray{border-radius:50%;border-color:#fff;width:44px;height:44px;margin:-22px 0 0 -22px}
-#flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .25s}
+#okflash{position:absolute;inset:0;background:#22C55E;opacity:0;pointer-events:none;z-index:40}
+#hapSw{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;margin:0}
 #toast{position:absolute;left:16px;right:16px;bottom:14px;margin:auto;max-width:440px;background:rgba(14,14,16,.92);border:1px solid var(--line);
   border-radius:12px;padding:10px 14px;font-size:14px;line-height:1.35;color:var(--text);opacity:0;transform:translateY(8px);
   transition:opacity .2s,transform .2s;pointer-events:none;text-align:center}
@@ -106,7 +107,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;paddin
 .shutter-row.lefty{flex-direction:row-reverse}
 #thumb{width:60px;height:60px;border-radius:12px;background:var(--card) center/cover no-repeat;border:2px solid var(--line);position:relative}
 #thumb .n{position:absolute;right:-7px;top:-7px;min-width:22px;height:22px;border-radius:99px;background:var(--orange);color:#fff;font-size:12px;font-weight:800;display:none;place-items:center;padding:0 5px}
-#shutter{width:104px;height:104px;border-radius:50%;border:5px solid #fff;display:grid;place-items:center;transition:border-color .15s}
+#shutter{position:relative;cursor:pointer;width:104px;height:104px;border-radius:50%;border:5px solid #fff;display:grid;place-items:center;transition:border-color .15s}
 #shutter i{width:82px;height:82px;border-radius:50%;background:#fff;transition:transform .1s}
 #shutter.fired{border-color:var(--good);transition:none}
 #shutter.fired i{transform:scale(.86)}
@@ -156,7 +157,6 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;paddin
     <canvas id="view"></canvas>
     <div id="overlay"><div id="gridBox"><div id="grid"></div></div><div id="anchor"></div></div>
     <div id="reticle"></div>
-    <div id="flash"></div>
     <div id="pickHint">Tap the gray card</div>
     <div id="toast"></div>
     <div id="start">
@@ -210,7 +210,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;paddin
 
     <div class="shutter-row" id="srow">
       <button id="thumb" aria-label="Photos"><span class="n" id="thumbN"></span></button>
-      <button id="shutter" aria-label="Take photo"><i></i></button>
+      <label id="shutter" role="button" aria-label="Take photo"><input type="checkbox" switch id="hapSw" tabindex="-1" aria-hidden="true"><i></i></label>
       <button class="sq" id="bMore">More</button>
       <button class="sq" id="bDone" style="display:none">Back to<br>camera</button>
     </div>
@@ -226,6 +226,8 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;paddin
       </div>
     </div>
   </div>
+
+  <div id="okflash"></div>
 
   <div id="viewer" hidden>
     <div class="vtop"><span id="vcount" class="num">1 of 1</span><span class="vtag" id="vtag">Not saved</span></div>
@@ -246,7 +248,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;paddin
 (function(){
 'use strict';
 /* ---------- version + self-update (iPhone home-screen apps hold on to old copies) ---------- */
-const APP_VERSION = 11;
+const APP_VERSION = 12;
 document.getElementById('verStart').textContent = 'Version ' + APP_VERSION;
 document.getElementById('verGal').textContent = '· v' + APP_VERSION;
 async function checkUpdate(){
@@ -718,6 +720,7 @@ function refresh(persist){
   $('vGrid').textContent = S.grid ? 'On' : 'Off'; $('bGrid').classList.toggle('on', S.grid); $('grid').classList.toggle('show', S.grid);
   $('vAuto').textContent = S.autosave ? 'On' : 'Off'; $('bAuto').classList.toggle('on', !!S.autosave);
   $('vCrop').textContent = S.crop === '1:1' ? 'Square' : '3:4'; $('bCrop').classList.toggle('on', S.crop === '1:1');
+  $('hapSw').disabled = !S.sound;
   $('vSound').textContent = S.sound ? 'On' : 'Off'; $('bSound').classList.toggle('on', !!S.sound);
   $('vHand').textContent = S.lefty ? 'Left' : 'Right'; $('srow').classList.toggle('lefty', !!S.lefty);
   $('vLock').textContent = picking === 'anchor' ? 'SKIP' : (lock ? (lock.ok ? 'ON' : 'COVERED') : 'OFF');
@@ -743,7 +746,6 @@ function capture(){
   if (!draw(true)) return;
   out.width = view.width; out.height = view.height;   // the preview already is exactly the photo
   octx.drawImage(view, 0, 0);
-  const f = $('flash'); f.style.transition = 'none'; f.style.opacity = .8; void f.offsetWidth; f.style.transition = ''; f.style.opacity = 0;
   // Built synchronously so the save sheet can open inside the shutter tap (iPhone only allows it there).
   const blob = dataURLBlob(out.toDataURL('image/jpeg', 0.92));
   shotN++;
@@ -757,23 +759,15 @@ function capture(){
   else if (wasEdit) toast('Fixed photo added. Tap the thumbnail to save.');
 }
 /* ---------- capture feedback you can feel (no sound) ---------- */
-let hapticLabel = null;
-function haptic(){
-  try{
-    if (navigator.vibrate){ navigator.vibrate(35); return; }                // Android
-    if (!hapticLabel){                                                     // iPhone (iOS 18+): a switch toggle gives a system tap
-      hapticLabel = document.createElement('label');
-      hapticLabel.style.cssText = 'position:absolute;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none';
-      const sw = document.createElement('input'); sw.type = 'checkbox'; sw.setAttribute('switch', '');
-      hapticLabel.appendChild(sw); document.body.appendChild(hapticLabel);
-    }
-    hapticLabel.click();
-  }catch(e){}
-}
+// iPhone: the shutter tap itself toggles a hidden switch, which gives the system haptic (iOS 18+).
+// Android: vibrate after capture.
+function haptic(){ try{ if (navigator.vibrate) navigator.vibrate(40); }catch(e){} }
 function shutterFeedback(){ if (S.sound) haptic(); }
 let firedT;
 function confirmShot(){
   shutterFeedback();
+  const f = $('okflash'); f.style.transition = 'none'; f.style.opacity = .85; void f.offsetWidth;
+  f.style.transition = 'opacity .55s ease-out'; f.style.opacity = 0;
   const b = $('shutter'); b.classList.add('fired'); clearTimeout(firedT); firedT = setTimeout(() => b.classList.remove('fired'), 220);
 }
 function dataURLBlob(u){
@@ -787,7 +781,7 @@ function updThumb(){
   $('thumbN').textContent = unsaved; $('thumbN').style.display = unsaved ? 'grid' : 'none';
   $('status').innerHTML = statusText();
 }
-$('shutter').onclick = capture;
+$('shutter').addEventListener('click', e => { if (e.target.id !== 'hapSw') capture(); });   // the label's click also reaches the switch; take one photo
 document.addEventListener('keydown', e => { if (!$('viewer').hidden || !$('sheet').hidden) return; if (e.key === ' ' || e.key === 'Enter' || e.key === 'AudioVolumeUp') { e.preventDefault(); capture(); } });
 
 async function shareFiles(list){
